@@ -1,1 +1,15 @@
+# dependencies
 node_modules/
+
+# build
+dist/
+
+# environment
+.env
+.env.local
+
+# coverage
+coverage/
+
+# misc
+*.log
