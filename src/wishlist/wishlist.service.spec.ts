@@ -1,8 +1,8 @@
 // wishlist.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
 import { WishlistService } from './wishlist.service';
-import { PrismaService } from '../../prisma/prisma.service';
-import { CreateWishlistDto } from '../dto/create-wishlist.dto';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateWishlistDto } from './dto/create-wishlist.dto';
 import { Wishlist, WishlistItem, WishlistItemType } from '@prisma/client';
 
 // Tipagem explícita para os dados de criação do Prisma
