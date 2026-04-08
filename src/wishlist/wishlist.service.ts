@@ -1,19 +1,35 @@
-// wishlist.service.ts (stub inicial para TDD)
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateWishlistDto } from './dto/create-wishlist.dto';
-import { Wishlist } from '@prisma/client';
+import { Wishlist, WishlistItem } from '@prisma/client';
+
+type WishlistWithItems = Wishlist & { items: WishlistItem[] };
 
 @Injectable()
 export class WishlistService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createWishlistDto: CreateWishlistDto): Promise<Wishlist> {
-    // Implementação virá depois que o teste falhar
-    throw new Error('Method not implemented.');
+  async create(
+    createWishlistDto: CreateWishlistDto,
+  ): Promise<WishlistWithItems> {
+    const { userId, name, items } = createWishlistDto;
+
+    return this.prisma.wishlist.create({
+      data: {
+        userId,
+        name,
+        items: {
+          create: items ?? [],
+        },
+      },
+      include: { items: true },
+    });
   }
 
-  async findOne(id: string): Promise<Wishlist | null> {
-    throw new Error('Method not implemented.');
+  async findOne(id: string): Promise<WishlistWithItems | null> {
+    return this.prisma.wishlist.findUnique({
+      where: { id },
+      include: { items: true },
+    });
   }
 }

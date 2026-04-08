@@ -5,7 +5,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateWishlistDto } from './dto/create-wishlist.dto';
 import { Wishlist, WishlistItem, WishlistItemType } from '@prisma/client';
 
-// Tipagem explícita para os dados de criação do Prisma
 type WishlistCreateData = {
   userId: string;
   name: string;
@@ -19,12 +18,14 @@ type WishlistCreateData = {
   };
 };
 
-// Mock in-memory repository com tipagem correta
 class InMemoryWishlistRepository {
-  private wishlists: Map<string, Wishlist & { items: WishlistItem[] }> = new Map();
+  private wishlists: Map<string, Wishlist & { items: WishlistItem[] }> =
+    new Map();
   private items: Map<string, WishlistItem> = new Map();
 
-  async create(args: { data: WishlistCreateData }): Promise<Wishlist & { items: WishlistItem[] }> {
+  create(args: {
+    data: WishlistCreateData;
+  }): Promise<Wishlist & { items: WishlistItem[] }> {
     const { data } = args;
     const id = 'mock-uuid';
     const wishlist: Wishlist & { items: WishlistItem[] } = {
@@ -53,10 +54,10 @@ class InMemoryWishlistRepository {
       }
     }
 
-    return wishlist;
+    return Promise.resolve(wishlist);
   }
 
-  async findUnique(args: {
+  findUnique(args: {
     where: { id: string };
     include?: { items: boolean };
   }): Promise<(Wishlist & { items?: WishlistItem[] }) | null> {
@@ -69,7 +70,7 @@ class InMemoryWishlistRepository {
         (item) => item.wishlistId === args.where.id,
       );
     }
-    return result;
+    return Promise.resolve(result ?? null);
   }
 
   clear(): void {
@@ -93,13 +94,17 @@ describe('WishlistService', () => {
 
     prismaServiceMock = {
       wishlist: {
-        create: jest.fn().mockImplementation((args: { data: WishlistCreateData }) =>
-          inMemoryRepo.create(args),
-        ),
-        findUnique: jest.fn().mockImplementation(
-          (args: { where: { id: string }; include?: { items: boolean } }) =>
-            inMemoryRepo.findUnique(args),
-        ),
+        create: jest
+          .fn()
+          .mockImplementation((args: { data: WishlistCreateData }) =>
+            inMemoryRepo.create(args),
+          ),
+        findUnique: jest
+          .fn()
+          .mockImplementation(
+            (args: { where: { id: string }; include?: { items: boolean } }) =>
+              inMemoryRepo.findUnique(args),
+          ),
       },
     };
 
@@ -124,8 +129,12 @@ describe('WishlistService', () => {
         userId: 'user-123',
         name: 'Minha Lista',
         items: [
-          { itemType: WishlistItemType.CARD, cardId: 'card-001' },
-          { itemType: WishlistItemType.FILTER, filterType: 'color', filterRarity: 'rare' },
+          { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-001' },
+          {
+            itemType: WishlistItemType.FILTER,
+            filterType: 'color',
+            filterRarity: 'rare',
+          },
         ],
       };
 
@@ -158,6 +167,58 @@ describe('WishlistService', () => {
         include: { items: true },
       });
     });
+
+    it('should create a wishlist with only FILTER items', async () => {
+      const dto: CreateWishlistDto = {
+        userId: 'user-789',
+        name: 'Lista de Filtros',
+        items: [
+          {
+            itemType: WishlistItemType.FILTER,
+            filterType: 'type',
+            filterRarity: 'common',
+          },
+          {
+            itemType: WishlistItemType.FILTER,
+            filterType: 'color',
+            filterRarity: 'rare',
+          },
+        ],
+      };
+
+      const result = await service.create(dto);
+
+      expect(result.items).toHaveLength(2);
+      expect(
+        result.items.every((item) => item.itemType === WishlistItemType.FILTER),
+      ).toBe(true);
+      expect(result.items.every((item) => item.cardId === null)).toBe(true);
+    });
+
+    it('should call prisma with correct structure when creating', async () => {
+      const dto: CreateWishlistDto = {
+        userId: 'user-101',
+        name: 'Lista Estruturada',
+        items: [
+          { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-999' },
+        ],
+      };
+
+      await service.create(dto);
+
+      expect(prismaServiceMock.wishlist.create).toHaveBeenCalledWith({
+        data: {
+          userId: dto.userId,
+          name: dto.name,
+          items: {
+            create: [
+              { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-999' },
+            ],
+          },
+        },
+        include: { items: true },
+      });
+    });
   });
 
   describe('findOne', () => {
@@ -165,7 +226,9 @@ describe('WishlistService', () => {
       const created = await service.create({
         userId: 'user-789',
         name: 'Para ler depois',
-        items: [{ itemType: WishlistItemType.CARD, cardId: 'card-002' }],
+        items: [
+          { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-002' },
+        ],
       });
 
       const found = await service.findOne(created.id);
@@ -182,6 +245,42 @@ describe('WishlistService', () => {
     it('should return null if wishlist does not exist', async () => {
       const result = await service.findOne('non-existent-id');
       expect(result).toBeNull();
+    });
+
+    it('should return wishlist with correct userId and name', async () => {
+      const created = await service.create({
+        userId: 'user-check',
+        name: 'Lista Verificada',
+        items: [],
+      });
+
+      const found = await service.findOne(created.id);
+
+      expect(found?.userId).toBe('user-check');
+      expect(found?.name).toBe('Lista Verificada');
+      expect(found?.items).toHaveLength(0);
+    });
+
+    it('should return wishlist with all item fields populated', async () => {
+      const created = await service.create({
+        userId: 'user-fields',
+        name: 'Lista Completa',
+        items: [
+          {
+            itemType: WishlistItemType.FILTER,
+            filterType: 'color',
+            filterRarity: 'legendary',
+          },
+        ],
+      });
+
+      const found = await service.findOne(created.id);
+
+      expect(found?.items).toHaveLength(1);
+      expect(found?.items[0].itemType).toBe(WishlistItemType.FILTER);
+      expect(found?.items[0].filterType).toBe('color');
+      expect(found?.items[0].filterRarity).toBe('legendary');
+      expect(found?.items[0].cardId).toBeNull();
     });
   });
 });
