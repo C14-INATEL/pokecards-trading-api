@@ -1,14 +1,29 @@
 // wishlist.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotFoundException } from '@nestjs/common';
 import { WishlistService } from './wishlist.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateWishlistDto } from './dto/create-wishlist.dto';
+import { UpdateWishlistDto } from './dto/update-wishlist.dto';
 import { Wishlist, WishlistItem, WishlistItemType } from '@prisma/client';
 
 type WishlistCreateData = {
   userId: string;
   name: string;
   items?: {
+    create: Array<{
+      itemType: WishlistItemType;
+      cardId?: string | null;
+      filterType?: string | null;
+      filterRarity?: string | null;
+    }>;
+  };
+};
+
+type WishlistUpdateData = {
+  name?: string;
+  items?: {
+    deleteMany: object;
     create: Array<{
       itemType: WishlistItemType;
       cardId?: string | null;
@@ -62,7 +77,7 @@ class InMemoryWishlistRepository {
     include?: { items: boolean };
   }): Promise<(Wishlist & { items?: WishlistItem[] }) | null> {
     const wishlist = this.wishlists.get(args.where.id);
-    if (!wishlist) return null;
+    if (!wishlist) return Promise.resolve(null);
 
     const result = { ...wishlist };
     if (args.include?.items) {
@@ -71,6 +86,59 @@ class InMemoryWishlistRepository {
       );
     }
     return Promise.resolve(result ?? null);
+  }
+
+  update(args: {
+    where: { id: string };
+    data: WishlistUpdateData;
+    include?: { items: boolean };
+  }): Promise<Wishlist & { items: WishlistItem[] }> {
+    const wishlist = this.wishlists.get(args.where.id);
+    if (!wishlist) return Promise.resolve(null as any);
+
+    if (args.data.name !== undefined) {
+      wishlist.name = args.data.name;
+    }
+
+    if (args.data.items !== undefined) {
+      for (const [key, item] of this.items.entries()) {
+        if (item.wishlistId === args.where.id) {
+          this.items.delete(key);
+        }
+      }
+      wishlist.items = [];
+
+      for (const itemData of args.data.items.create) {
+        const itemId = `item-${this.items.size + 1}`;
+        const item: WishlistItem = {
+          id: itemId,
+          wishlistId: args.where.id,
+          itemType: itemData.itemType,
+          cardId: itemData.cardId ?? null,
+          filterType: itemData.filterType ?? null,
+          filterRarity: itemData.filterRarity ?? null,
+        };
+        this.items.set(itemId, item);
+        wishlist.items.push(item);
+      }
+    }
+
+    this.wishlists.set(args.where.id, wishlist);
+    return Promise.resolve({ ...wishlist });
+  }
+
+  delete(args: { where: { id: string } }): Promise<Wishlist> {
+    const wishlist = this.wishlists.get(args.where.id);
+    if (!wishlist) return Promise.resolve(null as any);
+
+    for (const [key, item] of this.items.entries()) {
+      if (item.wishlistId === args.where.id) {
+        this.items.delete(key);
+      }
+    }
+
+    this.wishlists.delete(args.where.id);
+    return Promise.resolve(wishlist);
   }
 
   clear(): void {
@@ -86,6 +154,8 @@ describe('WishlistService', () => {
     wishlist: {
       create: jest.Mock;
       findUnique: jest.Mock;
+      update: jest.Mock;
+      delete: jest.Mock;
     };
   };
 
@@ -104,6 +174,20 @@ describe('WishlistService', () => {
           .mockImplementation(
             (args: { where: { id: string }; include?: { items: boolean } }) =>
               inMemoryRepo.findUnique(args),
+          ),
+        update: jest
+          .fn()
+          .mockImplementation(
+            (args: {
+              where: { id: string };
+              data: WishlistUpdateData;
+              include?: { items: boolean };
+            }) => inMemoryRepo.update(args),
+          ),
+        delete: jest
+          .fn()
+          .mockImplementation((args: { where: { id: string } }) =>
+            inMemoryRepo.delete(args),
           ),
       },
     };
@@ -281,6 +365,116 @@ describe('WishlistService', () => {
       expect(found?.items[0].filterType).toBe('color');
       expect(found?.items[0].filterRarity).toBe('legendary');
       expect(found?.items[0].cardId).toBeNull();
+    });
+  });
+
+  describe('update', () => {
+    describe('Fluxo Normal', () => {
+      it('should update the name of an existing wishlist', async () => {
+        const created = await service.create({
+          userId: 'user-upd-1',
+          name: 'Nome Antigo',
+          items: [],
+        });
+
+        const dto: UpdateWishlistDto = { name: 'Nome Novo' };
+        const result = await service.update(created.id, dto);
+
+        expect(result.name).toBe('Nome Novo');
+        expect(result.id).toBe(created.id);
+        expect(prismaServiceMock.wishlist.update).toHaveBeenCalledWith({
+          where: { id: created.id },
+          data: { name: 'Nome Novo' },
+          include: { items: true },
+        });
+      });
+
+      it('should replace all items when items are provided in update', async () => {
+        const created = await service.create({
+          userId: 'user-upd-2',
+          name: 'Lista com Itens',
+          items: [
+            { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-old' },
+          ],
+        });
+
+        const dto: UpdateWishlistDto = {
+          items: [
+            { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-new-1' },
+            { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-new-2' },
+          ],
+        };
+        const result = await service.update(created.id, dto);
+
+        expect(result.items).toHaveLength(2);
+        expect(result.items.every((i) => i.cardId !== 'card-old')).toBe(true);
+        expect(result.items.map((i) => i.cardId)).toContain('card-new-1');
+        expect(result.items.map((i) => i.cardId)).toContain('card-new-2');
+      });
+    });
+
+    describe('Fluxo de Extensão', () => {
+      it('should throw NotFoundException when updating a non-existent wishlist', async () => {
+        const dto: UpdateWishlistDto = { name: 'Qualquer Nome' };
+
+        await expect(service.update('id-inexistente', dto)).rejects.toThrow(
+          NotFoundException,
+        );
+      });
+
+      it('should not call prisma.update when wishlist does not exist', async () => {
+        const dto: UpdateWishlistDto = { name: 'Nome Qualquer' };
+
+        await service.update('id-inexistente', dto).catch(() => {});
+
+        expect(prismaServiceMock.wishlist.update).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('delete', () => {
+    describe('Fluxo Normal', () => {
+      it('should delete an existing wishlist without error', async () => {
+        const created = await service.create({
+          userId: 'user-del-1',
+          name: 'Lista Para Deletar',
+          items: [],
+        });
+
+        await expect(service.delete(created.id)).resolves.toBeUndefined();
+        expect(prismaServiceMock.wishlist.delete).toHaveBeenCalledWith({
+          where: { id: created.id },
+        });
+      });
+
+      it('should make the wishlist unreachable after deletion', async () => {
+        const created = await service.create({
+          userId: 'user-del-2',
+          name: 'Lista Sumindo',
+          items: [
+            { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-bye' },
+          ],
+        });
+
+        await service.delete(created.id);
+
+        const found = await service.findOne(created.id);
+        expect(found).toBeNull();
+      });
+    });
+
+    describe('Fluxo de Extensão', () => {
+      it('should throw NotFoundException when deleting a non-existent wishlist', async () => {
+        await expect(service.delete('id-inexistente')).rejects.toThrow(
+          NotFoundException,
+        );
+      });
+
+      it('should not call prisma.delete when wishlist does not exist', async () => {
+        await service.delete('id-inexistente').catch(() => {});
+
+        expect(prismaServiceMock.wishlist.delete).not.toHaveBeenCalled();
+      });
     });
   });
 });
