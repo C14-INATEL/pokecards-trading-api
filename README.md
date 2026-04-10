@@ -291,4 +291,43 @@ TradeProposal 1 ──── N ProposalItem
 | `WishlistItemType` | `SPECIFIC_CARD`, `FILTER` |
 
 
-### Utilização de IAs
+### Utilização de IAs ###
+Utilização de IA no Desenvolvimento
+Após a escrita dos testes unitários (arquivos .spec.ts), utilizamos uma IA generativa para implementar os endpoints e serviços da aplicação.
+O fluxo adotado foi o seguinte: primeiro definimos os contratos esperados por meio dos testes — cobrindo tanto o fluxo normal quanto os casos de borda — e em seguida fornecemos esses testes como contexto para a IA, que gerou a implementação correspondente dos serviços e controllers.
+Essa abordagem garantiu que o código produzido pela IA nascesse orientado aos testes, reduzindo retrabalho e mantendo a cobertura desde o início do desenvolvimento.
+
+Ian: 
+Estou desenvolvendo uma API REST com NestJS + Prisma + PostgreSQL. Preciso que você gere os métodos update e delete para o WishlistService, seguindo o padrão já existente no projeto e com base nos testes abaixo:
+
+update(id, dto): verifica se a wishlist existe com findUnique antes de atualizar. Se não existir, lança NotFoundException. Chama prisma.wishlist.update com where: { id }, include: { items: true }. Quando dto.items for fornecido, substitui todos os itens usando items: { deleteMany: {}, create: [...] }.
+delete(id): verifica se a wishlist existe com findOne antes de deletar. Se não existir, lança NotFoundException. Chama prisma.wishlist.delete com where: { id } e retorna void.
+
+Gabriel Renato: 
+Estou desenvolvendo uma API REST com NestJS + Prisma + PostgreSQL. Preciso que você gere os endpoints de update e delete para o módulo Wishlist, seguindo o padrão já existente no projeto e com base nos testes existentes da Wishlist, segue contexto do prisma no arquivo enviado.
+
+
+## ⚙️ CI/CD Pipeline
+
+O projeto conta com um pipeline automatizado via **GitHub Actions**, composto por quatro jobs:
+
+- **Testes** e **Build** rodam em paralelo a cada push ou pull request nas branches `main` e `dev`. O job de testes executa a suíte com cobertura (`npm run test:cov`) e salva o relatório como artefato. O job de build compila o TypeScript para `dist/` e também salva o pacote compilado.
+
+- **Deploy** é acionado automaticamente no Railway apenas em pushes diretos à `main`, e somente se ambos os jobs anteriores finalizarem com sucesso.
+
+- **Notificação** sempre executa ao final do pipeline (independente do resultado), enviando um e-mail com o status de cada job via `scripts/notify.js`.
+
+### Secrets e variáveis necessárias
+
+Configure em **Settings → Secrets / Variables → Actions** do repositório:
+
+| Nome | Tipo | Descrição |
+|------|------|-----------|
+| `RAILWAY_TOKEN` | Secret | Token de autenticação do Railway CLI |
+| `RAILWAY_PROJECT_ID` | Secret | ID do projeto no Railway |
+| `RAILWAY_SERVICE_ID` | Secret | ID do serviço no Railway |
+| `SMTP_HOST` | Secret | Servidor SMTP (ex: `smtp.gmail.com`) |
+| `SMTP_PORT` | Secret | Porta SMTP (ex: `587`) |
+| `SMTP_USER` | Secret | Usuário SMTP |
+| `SMTP_PASS` | Secret | App Password do SMTP |
+| `NOTIFY_EMAIL` | Variable | E-mail de destino das notificações |
