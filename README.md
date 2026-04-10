@@ -289,3 +289,6 @@ TradeProposal 1 ──── N ProposalItem
 | `TradeStatus` | `OPEN`, `CONCLUDED`, `CANCELLED` |
 | `ProposalStatus` | `PENDING`, `ACCEPTED`, `REJECTED`, `CANCELLED` |
 | `WishlistItemType` | `SPECIFIC_CARD`, `FILTER` |
+
+
+### Utilização de IAs
