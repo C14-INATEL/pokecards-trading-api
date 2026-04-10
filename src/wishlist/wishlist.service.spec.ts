@@ -208,168 +208,288 @@ describe('WishlistService', () => {
   });
 
   describe('create', () => {
-    it('should create a wishlist with items', async () => {
-      const dto: CreateWishlistDto = {
-        userId: 'user-123',
-        name: 'Minha Lista',
-        items: [
-          { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-001' },
-          {
-            itemType: WishlistItemType.FILTER,
-            filterType: 'color',
-            filterRarity: 'rare',
-          },
-        ],
-      };
+    describe('fluxo normal', () => {
+      it('should create a wishlist with items', async () => {
+        const dto: CreateWishlistDto = {
+          userId: 'user-123',
+          name: 'Minha Lista',
+          items: [
+            { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-001' },
+            {
+              itemType: WishlistItemType.FILTER,
+              filterType: 'color',
+              filterRarity: 'rare',
+            },
+          ],
+        };
 
-      const result = await service.create(dto);
+        const result = await service.create(dto);
 
-      expect(result).toBeDefined();
-      expect(result.id).toBe('mock-uuid');
-      expect(result.userId).toBe(dto.userId);
-      expect(result.name).toBe(dto.name);
-      expect(result.items).toHaveLength(2);
-      expect(prismaServiceMock.wishlist.create).toHaveBeenCalledTimes(1);
-    });
+        expect(result).toBeDefined();
+        expect(result.id).toBe('mock-uuid');
+        expect(result.userId).toBe(dto.userId);
+        expect(result.name).toBe(dto.name);
+        expect(result.items).toHaveLength(2);
+      });
 
-    it('should create a wishlist without items', async () => {
-      const dto: CreateWishlistDto = {
-        userId: 'user-456',
-        name: 'Lista Vazia',
-        items: [],
-      };
+      it('should create a wishlist without items', async () => {
+        const dto: CreateWishlistDto = {
+          userId: 'user-456',
+          name: 'Lista Vazia',
+          items: [],
+        };
 
-      const result = await service.create(dto);
+        const result = await service.create(dto);
 
-      expect(result.items).toHaveLength(0);
-      expect(prismaServiceMock.wishlist.create).toHaveBeenCalledWith({
-        data: {
-          userId: dto.userId,
-          name: dto.name,
-          items: { create: [] },
-        },
-        include: { items: true },
+        expect(result.items).toHaveLength(0);
+        expect(result.userId).toBe(dto.userId);
+        expect(result.name).toBe(dto.name);
+      });
+
+      it('should create a wishlist with only FILTER items', async () => {
+        const dto: CreateWishlistDto = {
+          userId: 'user-789',
+          name: 'Lista de Filtros',
+          items: [
+            {
+              itemType: WishlistItemType.FILTER,
+              filterType: 'type',
+              filterRarity: 'common',
+            },
+            {
+              itemType: WishlistItemType.FILTER,
+              filterType: 'color',
+              filterRarity: 'rare',
+            },
+          ],
+        };
+
+        const result = await service.create(dto);
+
+        expect(result.items).toHaveLength(2);
+        expect(
+          result.items.every(
+            (item) => item.itemType === WishlistItemType.FILTER,
+          ),
+        ).toBe(true);
+        expect(result.items.every((item) => item.cardId === null)).toBe(true);
+      });
+
+      it('should create a wishlist with only SPECIFIC_CARD items', async () => {
+        const dto: CreateWishlistDto = {
+          userId: 'user-101',
+          name: 'Lista de Cartas',
+          items: [
+            { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-001' },
+            { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-002' },
+          ],
+        };
+
+        const result = await service.create(dto);
+
+        expect(result.items).toHaveLength(2);
+        expect(
+          result.items.every(
+            (item) => item.itemType === WishlistItemType.SPECIFIC_CARD,
+          ),
+        ).toBe(true);
+        expect(result.items.every((item) => item.filterType === null)).toBe(
+          true,
+        );
       });
     });
 
-    it('should create a wishlist with only FILTER items', async () => {
-      const dto: CreateWishlistDto = {
-        userId: 'user-789',
-        name: 'Lista de Filtros',
-        items: [
-          {
-            itemType: WishlistItemType.FILTER,
-            filterType: 'type',
-            filterRarity: 'common',
+    describe('fluxo de extensão', () => {
+      it('should call prisma with correct structure when creating', async () => {
+        const dto: CreateWishlistDto = {
+          userId: 'user-101',
+          name: 'Lista Estruturada',
+          items: [
+            { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-999' },
+          ],
+        };
+
+        await service.create(dto);
+
+        expect(prismaServiceMock.wishlist.create).toHaveBeenCalledWith({
+          data: {
+            userId: dto.userId,
+            name: dto.name,
+            items: {
+              create: [
+                {
+                  itemType: WishlistItemType.SPECIFIC_CARD,
+                  cardId: 'card-999',
+                },
+              ],
+            },
           },
-          {
-            itemType: WishlistItemType.FILTER,
-            filterType: 'color',
-            filterRarity: 'rare',
+          include: { items: true },
+        });
+      });
+
+      it('should call prisma create exactly once', async () => {
+        const dto: CreateWishlistDto = {
+          userId: 'user-once',
+          name: 'Lista Única',
+          items: [],
+        };
+
+        await service.create(dto);
+
+        expect(prismaServiceMock.wishlist.create).toHaveBeenCalledTimes(1);
+      });
+
+      it('should call prisma with empty create array when items is empty', async () => {
+        const dto: CreateWishlistDto = {
+          userId: 'user-empty',
+          name: 'Lista Sem Itens',
+          items: [],
+        };
+
+        await service.create(dto);
+
+        expect(prismaServiceMock.wishlist.create).toHaveBeenCalledWith({
+          data: {
+            userId: dto.userId,
+            name: dto.name,
+            items: { create: [] },
           },
-        ],
-      };
+          include: { items: true },
+        });
+      });
 
-      const result = await service.create(dto);
+      it('should return wishlist with createdAt defined', async () => {
+        const dto: CreateWishlistDto = {
+          userId: 'user-date',
+          name: 'Lista com Data',
+          items: [],
+        };
 
-      expect(result.items).toHaveLength(2);
-      expect(
-        result.items.every((item) => item.itemType === WishlistItemType.FILTER),
-      ).toBe(true);
-      expect(result.items.every((item) => item.cardId === null)).toBe(true);
-    });
+        const result = await service.create(dto);
 
-    it('should call prisma with correct structure when creating', async () => {
-      const dto: CreateWishlistDto = {
-        userId: 'user-101',
-        name: 'Lista Estruturada',
-        items: [
-          { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-999' },
-        ],
-      };
-
-      await service.create(dto);
-
-      expect(prismaServiceMock.wishlist.create).toHaveBeenCalledWith({
-        data: {
-          userId: dto.userId,
-          name: dto.name,
-          items: {
-            create: [
-              { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-999' },
-            ],
-          },
-        },
-        include: { items: true },
+        expect(result.createdAt).toBeDefined();
+        expect(result.createdAt).toBeInstanceOf(Date);
       });
     });
   });
 
   describe('findOne', () => {
-    it('should return a wishlist with items if it exists', async () => {
-      const created = await service.create({
-        userId: 'user-789',
-        name: 'Para ler depois',
-        items: [
-          { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-002' },
-        ],
+    describe('fluxo normal', () => {
+      it('should return a wishlist with items if it exists', async () => {
+        const created = await service.create({
+          userId: 'user-789',
+          name: 'Para ler depois',
+          items: [
+            { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-002' },
+          ],
+        });
+
+        const found = await service.findOne(created.id);
+
+        expect(found).toBeDefined();
+        expect(found?.id).toBe(created.id);
+        expect(found?.items).toHaveLength(1);
       });
 
-      const found = await service.findOne(created.id);
+      it('should return null if wishlist does not exist', async () => {
+        const result = await service.findOne('non-existent-id');
 
-      expect(found).toBeDefined();
-      expect(found?.id).toBe(created.id);
-      expect(found?.items).toHaveLength(1);
-      expect(prismaServiceMock.wishlist.findUnique).toHaveBeenCalledWith({
-        where: { id: created.id },
-        include: { items: true },
+        expect(result).toBeNull();
+      });
+
+      it('should return wishlist with correct userId and name', async () => {
+        const created = await service.create({
+          userId: 'user-check',
+          name: 'Lista Verificada',
+          items: [],
+        });
+
+        const found = await service.findOne(created.id);
+
+        expect(found?.userId).toBe('user-check');
+        expect(found?.name).toBe('Lista Verificada');
+        expect(found?.items).toHaveLength(0);
+      });
+
+      it('should return wishlist with all item fields populated', async () => {
+        const created = await service.create({
+          userId: 'user-fields',
+          name: 'Lista Completa',
+          items: [
+            {
+              itemType: WishlistItemType.FILTER,
+              filterType: 'color',
+              filterRarity: 'legendary',
+            },
+          ],
+        });
+
+        const found = await service.findOne(created.id);
+
+        expect(found?.items).toHaveLength(1);
+        expect(found?.items[0].itemType).toBe(WishlistItemType.FILTER);
+        expect(found?.items[0].filterType).toBe('color');
+        expect(found?.items[0].filterRarity).toBe('legendary');
+        expect(found?.items[0].cardId).toBeNull();
       });
     });
 
-    it('should return null if wishlist does not exist', async () => {
-      const result = await service.findOne('non-existent-id');
-      expect(result).toBeNull();
-    });
+    describe('fluxo de extensão', () => {
+      it('should call prisma findUnique with correct args', async () => {
+        const created = await service.create({
+          userId: 'user-args',
+          name: 'Lista Args',
+          items: [],
+        });
 
-    it('should return wishlist with correct userId and name', async () => {
-      const created = await service.create({
-        userId: 'user-check',
-        name: 'Lista Verificada',
-        items: [],
+        await service.findOne(created.id);
+
+        expect(prismaServiceMock.wishlist.findUnique).toHaveBeenCalledWith({
+          where: { id: created.id },
+          include: { items: true },
+        });
       });
 
-      const found = await service.findOne(created.id);
+      it('should call prisma findUnique exactly once', async () => {
+        const created = await service.create({
+          userId: 'user-once',
+          name: 'Lista Once',
+          items: [],
+        });
 
-      expect(found?.userId).toBe('user-check');
-      expect(found?.name).toBe('Lista Verificada');
-      expect(found?.items).toHaveLength(0);
-    });
+        await service.findOne(created.id);
 
-    it('should return wishlist with all item fields populated', async () => {
-      const created = await service.create({
-        userId: 'user-fields',
-        name: 'Lista Completa',
-        items: [
-          {
-            itemType: WishlistItemType.FILTER,
-            filterType: 'color',
-            filterRarity: 'legendary',
-          },
-        ],
+        expect(prismaServiceMock.wishlist.findUnique).toHaveBeenCalledTimes(1);
       });
 
-      const found = await service.findOne(created.id);
+      it('should return empty items array when wishlist has no items', async () => {
+        const created = await service.create({
+          userId: 'user-empty',
+          name: 'Lista Vazia',
+          items: [],
+        });
 
-      expect(found?.items).toHaveLength(1);
-      expect(found?.items[0].itemType).toBe(WishlistItemType.FILTER);
-      expect(found?.items[0].filterType).toBe('color');
-      expect(found?.items[0].filterRarity).toBe('legendary');
-      expect(found?.items[0].cardId).toBeNull();
+        const found = await service.findOne(created.id);
+
+        expect(found?.items).toBeDefined();
+        expect(found?.items).toHaveLength(0);
+        expect(Array.isArray(found?.items)).toBe(true);
+      });
+
+      it('should return null for any non-existent id without throwing', async () => {
+        const ids = ['abc-123', 'xyz-999', 'fake-id'];
+
+        for (const id of ids) {
+          const result = await service.findOne(id);
+          expect(result).toBeNull();
+        }
+      });
     });
   });
 
   describe('update', () => {
-    describe('Fluxo Normal', () => {
+    describe('fluxo normal', () => {
       it('should update the name of an existing wishlist', async () => {
         const created = await service.create({
           userId: 'user-upd-1',
@@ -413,7 +533,7 @@ describe('WishlistService', () => {
       });
     });
 
-    describe('Fluxo de Extensão', () => {
+    describe('fluxo de extensão', () => {
       it('should throw NotFoundException when updating a non-existent wishlist', async () => {
         const dto: UpdateWishlistDto = { name: 'Qualquer Nome' };
 
@@ -433,7 +553,7 @@ describe('WishlistService', () => {
   });
 
   describe('delete', () => {
-    describe('Fluxo Normal', () => {
+    describe('fluxo normal', () => {
       it('should delete an existing wishlist without error', async () => {
         const created = await service.create({
           userId: 'user-del-1',
@@ -463,7 +583,7 @@ describe('WishlistService', () => {
       });
     });
 
-    describe('Fluxo de Extensão', () => {
+    describe('fluxo de extensão', () => {
       it('should throw NotFoundException when deleting a non-existent wishlist', async () => {
         await expect(service.delete('id-inexistente')).rejects.toThrow(
           NotFoundException,
