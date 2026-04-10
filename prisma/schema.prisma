@@ -1,0 +1,117 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TradeStatus {
+  OPEN
+  CONCLUDED
+  CANCELLED
+}
+
+enum ProposalStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum WishlistItemType {
+  SPECIFIC_CARD
+  FILTER
+}
+
+model Trade {
+  id               String          @id @default(uuid()) @db.Uuid
+  ownerId          String
+  status           TradeStatus     @default(OPEN)
+  linkedWishlistId String?         @db.Uuid
+  linkedWishlist   Wishlist?       @relation("LinkedWishlist", fields: [linkedWishlistId], references: [id], onDelete: SetNull)
+  offeredCards     TradeItem[]     @relation("TradeOfferedCards")
+  requestedCards   TradeItem[]     @relation("TradeRequestedCards")
+  proposals        TradeProposal[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([ownerId])
+  @@index([status])
+  @@index([linkedWishlistId])
+  @@map("trades")
+}
+
+model TradeItem {
+  id               String  @id @default(uuid()) @db.Uuid
+  cardId           String
+  quantity         Int
+  offeredTradeId   String? @db.Uuid
+  requestedTradeId String? @db.Uuid
+  offeredTrade     Trade?  @relation("TradeOfferedCards", fields: [offeredTradeId], references: [id], onDelete: Cascade)
+  requestedTrade   Trade?  @relation("TradeRequestedCards", fields: [requestedTradeId], references: [id], onDelete: Cascade)
+
+  @@index([cardId])
+  @@index([offeredTradeId])
+  @@index([requestedTradeId])
+  @@map("trade_items")
+}
+
+model TradeProposal {
+  id           String         @id @default(uuid()) @db.Uuid
+  tradeId      String         @db.Uuid
+  proposerId   String
+  status       ProposalStatus @default(PENDING)
+  message      String?
+  createdAt    DateTime       @default(now())
+  trade        Trade          @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  offeredCards ProposalItem[]
+
+  @@index([tradeId])
+  @@index([proposerId])
+  @@index([status])
+  @@map("trade_proposals")
+}
+
+model ProposalItem {
+  id         String        @id @default(uuid()) @db.Uuid
+  cardId     String
+  quantity   Int
+  proposalId String        @db.Uuid
+  proposal   TradeProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@index([proposalId])
+  @@index([cardId])
+  @@map("proposal_items")
+}
+
+model Wishlist {
+  id           String         @id @default(uuid()) @db.Uuid
+  userId       String
+  name         String
+  createdAt    DateTime       @default(now())
+  items        WishlistItem[]
+  linkedTrades Trade[]        @relation("LinkedWishlist")
+
+  @@index([userId])
+  @@map("wishlists")
+}
+
+model WishlistItem {
+  id           String           @id @default(uuid()) @db.Uuid
+  wishlistId   String           @db.Uuid
+  itemType     WishlistItemType
+  cardId       String?
+  filterType   String?
+  filterRarity String?
+  wishlist     Wishlist         @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+
+  @@index([wishlistId])
+  @@index([itemType])
+  @@index([cardId])
+  @@map("wishlist_items")
+}

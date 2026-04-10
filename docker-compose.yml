@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: pokemon-trades-db
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-pokemon_trades}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: pokemon-trades-app
+    ports:
+      - '3000:3000'
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-pokemon_trades}
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:
