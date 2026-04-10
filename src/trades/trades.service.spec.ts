@@ -207,7 +207,9 @@ describe('TradesService', () => {
             ownerId: 'gary-oak',
             linkedWishlistId: null,
             offeredCards: { create: [{ cardId: 'eevee-base', quantity: 1 }] },
-            requestedCards: { create: [{ cardId: 'mewtwo-base', quantity: 1 }] },
+            requestedCards: {
+              create: [{ cardId: 'mewtwo-base', quantity: 1 }],
+            },
           },
           include: { offeredCards: true, requestedCards: true },
         });
@@ -249,8 +251,12 @@ describe('TradesService', () => {
 
         expect(found.offeredCards).toHaveLength(2);
         expect(found.requestedCards).toHaveLength(1);
-        expect(found.offeredCards.map((c) => c.cardId)).toContain('alakazam-base');
-        expect(found.offeredCards.map((c) => c.cardId)).toContain('machamp-base');
+        expect(found.offeredCards.map((c) => c.cardId)).toContain(
+          'alakazam-base',
+        );
+        expect(found.offeredCards.map((c) => c.cardId)).toContain(
+          'machamp-base',
+        );
       });
     });
 
