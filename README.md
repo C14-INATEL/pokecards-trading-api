@@ -17,9 +17,12 @@ API REST desenvolvida em **NestJS** para gerenciamento de trocas de cartas Poké
 ---
 
 ## 📁 Estrutura do Projeto
+
+```
 prisma/
-├── schema.prisma            # Modelos do banco de dados
-└── seed.ts                  # Seed de dados iniciais
+├── schema.prisma
+└── seed.ts
+
 src/
 ├── common/
 │   ├── dto/
@@ -55,9 +58,11 @@ src/
 │   └── wishlist.service.ts
 ├── app.module.ts
 └── main.ts
+
 test/
 ├── jest-e2e.json
 └── trades.e2e-spec.ts
+```
 
 ---
 
@@ -84,7 +89,11 @@ cd pokecards-trading-api
 cp .env.example .env
 ```
 
-Edite o `.env` com suas configurações de banco de dados.
+Edite o `.env` com suas configurações de banco de dados:
+
+```env
+DATABASE_URL="postgresql://usuario:senha@localhost:5432/pokecards"
+```
 
 ### 3. Suba o banco com Docker
 
@@ -159,9 +168,38 @@ Gerencia as listas de desejos dos usuários com dois tipos de item:
 
 ---
 
+### Trades
+
+Gerencia as trocas abertas pelos usuários. Uma trade pode ser vinculada a uma wishlist, facilitando o match entre o que o dono quer e o que está sendo ofertado.
+
+| Status | Descrição |
+|--------|-----------|
+| `OPEN` | Troca disponível para propostas |
+| `CONCLUDED` | Troca finalizada |
+| `CANCELLED` | Troca cancelada |
+
+**Endpoints:**
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| POST | `/trades` | Cria uma nova trade |
+| GET | `/trades` | Lista todas as trades |
+| GET | `/trades/:id` | Busca uma trade por ID |
+| PATCH | `/trades/:id` | Atualiza uma trade |
+| DELETE | `/trades/:id` | Remove uma trade |
+
+---
+
 ### Trade Proposal
 
-Gerencia propostas de troca entre usuários.
+Gerencia propostas de troca feitas por outros usuários em resposta a uma trade aberta.
+
+| Status | Descrição |
+|--------|-----------|
+| `PENDING` | Aguardando resposta do dono da trade |
+| `ACCEPTED` | Proposta aceita |
+| `REJECTED` | Proposta recusada |
+| `CANCELLED` | Proposta cancelada pelo proponente |
 
 **Endpoints:**
 
@@ -169,38 +207,85 @@ Gerencia propostas de troca entre usuários.
 |--------|------|-----------|
 | POST | `/trade-proposal` | Cria uma proposta de troca |
 
-As propostas são criadas com status `PENDING` por padrão.
-
----
-
-### Trades
-
-Módulo responsável por listar e gerenciar as trocas realizadas entre usuários.
-
 ---
 
 ## 🗄️ Modelo de Dados
 
-```prisma
-model Wishlist {
-  id        String         @id @default(uuid())
-  userId    String
-  name      String
-  createdAt DateTime       @default(now())
-  items     WishlistItem[]
-}
+### Diagrama de Relacionamentos
 
-model WishlistItem {
-  id           String           @id @default(uuid())
-  wishlistId   String
-  itemType     WishlistItemType
-  cardId       String?
-  filterType   String?
-  filterRarity String?
-  wishlist     Wishlist         @relation(fields: [wishlistId], references: [id])
-}
+```
+Wishlist 1 ──────────── N WishlistItem
+    │
+    └── N ──────────── N Trade (linkedWishlist)
 
-enum WishlistItemType {
-  SPECIFIC_CARD
-  FILTER
-}
+Trade 1 ──────────── N TradeItem (offeredCards)
+Trade 1 ──────────── N TradeItem (requestedCards)
+Trade 1 ──────────── N TradeProposal
+
+TradeProposal 1 ──── N ProposalItem
+```
+
+### Modelos
+
+**Wishlist**
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | UUID | Identificador único |
+| userId | String | ID do usuário dono |
+| name | String | Nome da lista |
+| createdAt | DateTime | Data de criação |
+
+**WishlistItem**
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | UUID | Identificador único |
+| wishlistId | UUID | Referência à wishlist |
+| itemType | WishlistItemType | Tipo do item |
+| cardId | String? | ID da carta (SPECIFIC_CARD) |
+| filterType | String? | Tipo do filtro (FILTER) |
+| filterRarity | String? | Raridade do filtro (FILTER) |
+
+**Trade**
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | UUID | Identificador único |
+| ownerId | String | ID do dono da troca |
+| status | TradeStatus | Status da troca |
+| linkedWishlistId | UUID? | Wishlist vinculada (opcional) |
+| createdAt | DateTime | Data de criação |
+| updatedAt | DateTime | Data de atualização |
+
+**TradeItem**
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | UUID | Identificador único |
+| cardId | String | ID da carta |
+| quantity | Int | Quantidade |
+| offeredTradeId | UUID? | Trade que oferta este item |
+| requestedTradeId | UUID? | Trade que solicita este item |
+
+**TradeProposal**
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | UUID | Identificador único |
+| tradeId | UUID | Referência à trade |
+| proposerId | String | ID do proponente |
+| status | ProposalStatus | Status da proposta |
+| message | String? | Mensagem opcional |
+| createdAt | DateTime | Data de criação |
+
+**ProposalItem**
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | UUID | Identificador único |
+| cardId | String | ID da carta ofertada |
+| quantity | Int | Quantidade |
+| proposalId | UUID | Referência à proposta |
+
+### Enums
+
+| Enum | Valores |
+|------|---------|
+| `TradeStatus` | `OPEN`, `CONCLUDED`, `CANCELLED` |
+| `ProposalStatus` | `PENDING`, `ACCEPTED`, `REJECTED`, `CANCELLED` |
+| `WishlistItemType` | `SPECIFIC_CARD`, `FILTER` |
