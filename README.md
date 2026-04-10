@@ -10,28 +10,54 @@ API REST desenvolvida em **NestJS** para gerenciamento de trocas de cartas Poké
 - **Prisma ORM** — acesso ao banco de dados
 - **PostgreSQL** — banco de dados relacional
 - **Docker / Docker Compose** — containerização
-- **Jest** — testes unitários
+- **Jest** — testes unitários e e2e
 - **TypeScript**
 - **ESLint + Prettier** — padronização de código
 
 ---
 
 ## 📁 Estrutura do Projeto
+prisma/
+├── schema.prisma            # Modelos do banco de dados
+└── seed.ts                  # Seed de dados iniciais
 src/
-├── health/                  # Health check da aplicação
-├── prisma/                  # Módulo e serviço do Prisma
-├── trades/                  # Módulo de propostas de troca
-│   └── trade-proposal/
-├── wishlist/                # Módulo de lista de desejos
+├── common/
+│   ├── dto/
+│   │   └── pagination.dto.ts
+│   ├── filters/
+│   │   └── http-exception.filter.ts
+│   └── interceptors/
+│       └── logging.interceptor.ts
+├── health/
+│   ├── health.controller.ts
+│   └── health.module.ts
+├── prisma/
+│   ├── prisma.module.ts
+│   └── prisma.service.ts
+├── trade-proposal/
+│   ├── dto/
+│   │   └── create-trade-proposal.dto.ts
+│   ├── trade-proposal.controller.ts
+│   ├── trade-proposal.module.ts
+│   ├── trade-proposal.service.spec.ts
+│   └── trade-proposal.service.ts
+├── trades/
+│   ├── trades.controller.ts
+│   ├── trades.module.ts
+│   └── trades.service.ts
+├── wishlist/
 │   ├── dto/
 │   │   ├── create-wishlist.dto.ts
 │   │   └── update-wishlist.dto.ts
 │   ├── wishlist.controller.ts
 │   ├── wishlist.module.ts
-│   ├── wishlist.service.ts
-│   └── wishlist.service.spec.ts
+│   ├── wishlist.service.spec.ts
+│   └── wishlist.service.ts
 ├── app.module.ts
 └── main.ts
+test/
+├── jest-e2e.json
+└── trades.e2e-spec.ts
 
 ---
 
@@ -43,7 +69,7 @@ src/
 
 ---
 
-## 🛠️ Instalação e execução
+## 🛠️ Instalação e Execução
 
 ### 1. Clone o repositório
 
@@ -72,10 +98,11 @@ docker-compose up -d
 npm install
 ```
 
-### 5. Rode as migrations
+### 5. Rode as migrations e o seed
 
 ```bash
 npx prisma migrate dev
+npx prisma db seed
 ```
 
 ### 6. Inicie a aplicação
@@ -93,17 +120,20 @@ npm run start:prod
 ## 🧪 Testes
 
 ```bash
-# todos os testes
+# testes unitários
 npm run test
 
 # com output detalhado
 npm run test -- --verbose
 
+# testes e2e
+npm run test:e2e
+
 # cobertura
 npm run test:cov
 ```
 
-Os testes são organizados em **fluxo normal** (casos esperados) e **fluxo de extensão** (casos de erro e borda) para cada método do serviço.
+Os testes unitários são organizados em **fluxo normal** (casos esperados) e **fluxo de extensão** (erros e casos de borda) para cada método dos serviços.
 
 ---
 
@@ -143,7 +173,13 @@ As propostas são criadas com status `PENDING` por padrão.
 
 ---
 
-## 🗄️ Modelo de dados
+### Trades
+
+Módulo responsável por listar e gerenciar as trocas realizadas entre usuários.
+
+---
+
+## 🗄️ Modelo de Dados
 
 ```prisma
 model Wishlist {
@@ -155,13 +191,13 @@ model Wishlist {
 }
 
 model WishlistItem {
-  id            String            @id @default(uuid())
-  wishlistId    String
-  itemType      WishlistItemType
-  cardId        String?
-  filterType    String?
-  filterRarity  String?
-  wishlist      Wishlist          @relation(fields: [wishlistId], references: [id])
+  id           String           @id @default(uuid())
+  wishlistId   String
+  itemType     WishlistItemType
+  cardId       String?
+  filterType   String?
+  filterRarity String?
+  wishlist     Wishlist         @relation(fields: [wishlistId], references: [id])
 }
 
 enum WishlistItemType {
