@@ -330,6 +330,11 @@ testes no total
 
 Satisfação: O resultado foi satisfatório. A IA compreendeu corretamente o padrão do projeto e gerou o código alinhado à estrutura existente, seguindo o mesmo modelo de InMemoryRepository utilizado na Wishlist. Foram necessários pequenos ajustes, como a reorganização dos testes em dois grupos distintos (fluxo normal e fluxo de extensão), mas no geral o código gerado exigiu poucas modificações para atender aos requisitos da atividade.
 
+Fabio Henrique:
+Usei prompts de IA principalmente para me ajudar no desenvolvimento do endpoint de Create e Read das trocas de cartas de Pokémon. Nesse processo, segui a ideia de TDD, então primeiro criei os testes unitários, cobrindo tanto o fluxo normal quanto casos de extensão, e só depois parti para a implementação dos endpoints com o apoio da IA. Esse uso dos prompts foi bem útil, porque ajudou a estruturar melhor o desenvolvimento e o resultado final ficou satisfatório, atendendo ao que eu tinha imaginado no início.
+
+Satisfação: Também usei alguns prompts para entender os problemas que apareceram depois do deploy da API no Railway, quando a aplicação acabou crashando. No começo, a situação ficou um pouco complicada, porque foi preciso analisar melhor o que estava causando os erros, mas com a ajuda da IA consegui compreender melhor os problemas envolvidos. Depois disso, consegui fazer as correções necessárias e o deploy voltou a funcionar.
+
 ## ⚙️ CI/CD Pipeline
 
 O projeto conta com um pipeline automatizado via **GitHub Actions**, composto por quatro jobs:
