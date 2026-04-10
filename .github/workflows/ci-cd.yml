@@ -1,0 +1,166 @@
+# ===
+# Pipeline CI/CD — Pokecards Trading API
+# ===
+#
+# Estrutura de jobs:
+#   - test e build rodam em PARALELO
+#   - deploy aguarda ambos com sucesso (somente em push na main)
+#   - notify sempre executa ao final (reporta o resultado de todos os jobs)
+#
+# Secrets necessários (Settings → Secrets → Actions):
+#   RAILWAY_TOKEN      — Token de autenticação do Railway CLI
+#   RAILWAY_PROJECT_ID — ID do projeto no Railway (Dashboard → Settings)
+#   RAILWAY_SERVICE_ID — ID do serviço no Railway (Service → Settings)
+#   SMTP_HOST          — Servidor SMTP  (ex: smtp.gmail.com)
+#   SMTP_PORT          — Porta SMTP     (ex: 587)
+#   SMTP_USER          — Usuário SMTP   (ex: seu@gmail.com)
+#   SMTP_PASS          — App Password   (ex: xxxx xxxx xxxx xxxx)
+#
+# Variables necessárias (Settings → Variables → Actions):
+#   NOTIFY_EMAIL — Endereço de e-mail de destino das notificações
+#
+# =============================================================================
+
+name: CI/CD Pipeline — Pokecards Trading API
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+
+  # ---------------------------------------------------------------------------
+  # Job 1 — Testes unitários   (executa em PARALELO com build)
+  # ---------------------------------------------------------------------------
+  test:
+    name: Testes Unitários
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - name: Instalar dependências
+        run: npm ci
+      - name: Gerar cliente Prisma
+        run: npx prisma generate
+        env:
+          DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
+
+      - name: Executar testes unitários com cobertura
+        run: npm run test:cov
+      - name: Upload do relatório de cobertura
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-coverage-report
+          path: coverage/
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # Job 2 — Build / Empacotamento   (executa em PARALELO com test)
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Gerar cliente Prisma
+        run: npx prisma generate
+        env:
+          DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
+
+      - name: Compilar aplicação TypeScript → dist/
+        run: npm run build
+
+      - name: Upload do pacote compilado
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-dist
+          path: dist/
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # Job 3 — Deploy no Railway
+  #   • Aguarda test + build com SUCESSO
+  #   • Executa somente em push direto na branch main
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: Deploy no Railway
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+      - name: Instalar Railway CLI
+        run: npm install -g @railway/cli
+      - name: Realizar deploy no Railway
+        run: railway up --detach
+        env:
+          RAILWAY_TOKEN:      ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+
+  # ---------------------------------------------------------------------------
+  # Job 4 — Notificação por e-mail
+  #   • Sempre executa ao final (independente do resultado dos outros jobs)
+  #   • Envia e-mail com o resultado de cada job via scripts/notify.js
+  # ---------------------------------------------------------------------------
+  notify:
+    name: Notificação por E-mail
+    runs-on: ubuntu-latest
+    needs: [test, build, deploy]
+    if: always()
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Enviar notificação por e-mail
+        run: node scripts/notify.js
+        env:
+          SMTP_HOST:     ${{ secrets.SMTP_HOST }}
+          SMTP_PORT:     ${{ secrets.SMTP_PORT }}
+          SMTP_USER:     ${{ secrets.SMTP_USER }}
+          SMTP_PASS:     ${{ secrets.SMTP_PASS }}
+          NOTIFY_EMAIL:  ${{ vars.NOTIFY_EMAIL }}
+          TEST_STATUS:   ${{ needs.test.result }}
+          BUILD_STATUS:  ${{ needs.build.result }}
+          DEPLOY_STATUS: ${{ needs.deploy.result }}
+          RUN_URL:       ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BRANCH:        ${{ github.ref_name }}
+          COMMIT_SHA:    ${{ github.sha }}
+          COMMIT_MSG:    ${{ github.event.head_commit.message }}
