@@ -5,11 +5,13 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
 import { TradesService } from './trades.service';
 import { CreateTradeDto } from './dto/create-trade.dto';
 import { TradeResponseDto } from './dto/trade-response.dto';
+import { NotFoundResponseDto } from '../common/dto/not-found-response.dto';
 import { ValidationErrorResponseDto } from '../common/dto/validation-error-response.dto';
 
 @ApiTags('Trades')
@@ -33,12 +35,18 @@ export class TradesController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Buscar uma troca por ID' })
+  @ApiParam({
+    name: 'id',
+    description: 'Identificador da troca.',
+    schema: { type: 'string', format: 'uuid' },
+  })
   @ApiOkResponse({
     description: 'Troca encontrada.',
     type: TradeResponseDto,
   })
   @ApiNotFoundResponse({
     description: 'Troca não encontrada.',
+    type: NotFoundResponseDto,
   })
   findOne(@Param('id') id: string): Promise<TradeResponseDto> {
     return this.tradesService.findOne(id);

@@ -16,10 +16,12 @@ async function bootstrap() {
   const swaggerConfig = new DocumentBuilder()
     .setTitle('PokeCards Trading API')
     .setDescription(
-      'Documentacao dos endpoints disponiveis para gerenciamento de wishlists e propostas de troca.',
+      'Documentacao dos endpoints disponiveis para gerenciamento de wishlists, trocas e propostas de troca.',
     )
     .setVersion('1.0.0')
+    .addTag('Health', 'Verificacao de disponibilidade da API.')
     .addTag('Wishlists', 'Operacoes para criar, consultar, atualizar e remover wishlists.')
+    .addTag('Trades', 'Operacoes para criar e consultar trocas.')
     .addTag('Trade Proposals', 'Operacoes para registrar propostas de troca.')
     .build();
 
