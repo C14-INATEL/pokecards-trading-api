@@ -2,6 +2,8 @@
 
 API REST desenvolvida em **NestJS** para gerenciamento de trocas de cartas Pokémon. Permite que usuários criem wishlists de cartas desejadas, proponham trocas e gerenciem suas coleções.
 
+### Link da API:
+https://fortunate-mercy-production-e6fc.up.railway.app/docs
 ---
 
 ## 🚀 Tecnologias
@@ -359,3 +361,4 @@ Configure em **Settings → Secrets / Variables → Actions** do repositório:
 | `SMTP_USER` | Secret | Usuário SMTP |
 | `SMTP_PASS` | Secret | App Password do SMTP |
 | `NOTIFY_EMAIL` | Variable | E-mail de destino das notificações |
+
