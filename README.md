@@ -303,9 +303,32 @@ Estou desenvolvendo uma API REST com NestJS + Prisma + PostgreSQL. Preciso que v
 update(id, dto): verifica se a wishlist existe com findUnique antes de atualizar. Se não existir, lança NotFoundException. Chama prisma.wishlist.update com where: { id }, include: { items: true }. Quando dto.items for fornecido, substitui todos os itens usando items: { deleteMany: {}, create: [...] }.
 delete(id): verifica se a wishlist existe com findOne antes de deletar. Se não existir, lança NotFoundException. Chama prisma.wishlist.delete com where: { id } e retorna void.
 
+Satisfação: Gostei da resposta da IA, utilizei a Claude e o deepseek, em poucas correções o código estava do meu agrado.
+
 Gabriel Renato: 
 Estou desenvolvendo uma API REST com NestJS + Prisma + PostgreSQL. Preciso que você gere os endpoints de update e delete para o módulo Wishlist, seguindo o padrão já existente no projeto e com base nos testes existentes da Wishlist, segue contexto do prisma no arquivo enviado.
 
+Satisfação: Fiquei bastante satisfeito com a resposta fornecida pela IA. Utilizei a ferramenta Claude e, após realizar apenas algumas correções pontuais, o código passou a atender plenamente às minhas expectativas. O processo foi ágil e eficiente, exigindo poucos ajustes para alcançar o resultado desejado, o que demonstrou a qualidade e utilidade da solução apresentada.
+
+Gabriel Baldoni:
+Estou desenvolvendo uma API REST com NestJS + Prisma + PostgreSQL.
+Preciso que você gere o endpoint de create para o módulo Trade Proposal,
+seguindo o padrão já existente no projeto e com base nos testes existentes
+da Wishlist, segue contexto do prisma no arquivo enviado.
+
+create(dto): cria uma nova proposta de troca com status PENDING por padrão.
+Recebe tradeId, proposerId, message (opcional) e offeredCards (array de
+{ cardId, quantity }). Chama prisma.tradeProposal.create com data: { tradeId,
+proposerId, message, status: PENDING, offeredCards: { create: [...] } } e
+include: { offeredCards: true }.
+
+Os testes unitários devem seguir o padrão InMemoryRepository da Wishlist,
+com PrismaService substituído via useValue no TestingModule, beforeEach para
+setup e afterEach para limpeza. Testes divididos em dois describes:
+fluxo normal (happy path) e fluxo de extensão (edge cases), com entre 5 e 8
+testes no total
+
+Satisfação: O resultado foi satisfatório. A IA compreendeu corretamente o padrão do projeto e gerou o código alinhado à estrutura existente, seguindo o mesmo modelo de InMemoryRepository utilizado na Wishlist. Foram necessários pequenos ajustes, como a reorganização dos testes em dois grupos distintos (fluxo normal e fluxo de extensão), mas no geral o código gerado exigiu poucas modificações para atender aos requisitos da atividade.
 
 ## ⚙️ CI/CD Pipeline
 
