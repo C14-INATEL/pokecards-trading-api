@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException } from '@nestjs/common';
 import { TradeProposalService } from './trade-proposal.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTradeProposalDto } from './dto/create-trade-proposal.dto';
@@ -177,11 +178,31 @@ describe('TradeProposalService', () => {
       expect(result.offeredCards).toHaveLength(0);
     });
 
-    it('should call prisma with correct structure when creating', async () => {
-      const dto: CreateTradeProposalDto = {
-        tradeId: 'trade-006',
+    it('should throw BadRequestException when tradeId is missing', async () => {
+      const dto = {
+        tradeId: '',
         proposerId: 'user-006',
         offeredCards: [{ cardId: 'card-006', quantity: 1 }],
+      } as CreateTradeProposalDto;
+
+      await expect(service.create(dto)).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException when proposerId is missing', async () => {
+      const dto = {
+        tradeId: 'trade-007',
+        proposerId: '',
+        offeredCards: [{ cardId: 'card-007', quantity: 1 }],
+      } as CreateTradeProposalDto;
+
+      await expect(service.create(dto)).rejects.toThrow(BadRequestException);
+    });
+
+    it('should call prisma with correct structure when creating', async () => {
+      const dto: CreateTradeProposalDto = {
+        tradeId: 'trade-008',
+        proposerId: 'user-008',
+        offeredCards: [{ cardId: 'card-008', quantity: 1 }],
       };
 
       await service.create(dto);
@@ -193,7 +214,7 @@ describe('TradeProposalService', () => {
           message: null,
           status: ProposalStatus.PENDING,
           offeredCards: {
-            create: [{ cardId: 'card-006', quantity: 1 }],
+            create: [{ cardId: 'card-008', quantity: 1 }],
           },
         },
         include: { offeredCards: true },
@@ -202,9 +223,9 @@ describe('TradeProposalService', () => {
 
     it('should call prisma create exactly once', async () => {
       const dto: CreateTradeProposalDto = {
-        tradeId: 'trade-007',
-        proposerId: 'user-007',
-        offeredCards: [{ cardId: 'card-007', quantity: 1 }],
+        tradeId: 'trade-009',
+        proposerId: 'user-009',
+        offeredCards: [{ cardId: 'card-009', quantity: 1 }],
       };
 
       await service.create(dto);
