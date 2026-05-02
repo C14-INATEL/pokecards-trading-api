@@ -214,6 +214,24 @@ describe('TradesService', () => {
           include: { offeredCards: true, requestedCards: true },
         });
       });
+
+      it('should create a trade with the provided linkedWishlistId', async () => {
+        const input: CreateTradeInput = {
+          ownerId: 'serena-kalos',
+          linkedWishlistId: 'wishlist-001',
+          offeredCards: [{ cardId: 'braixen-xy', quantity: 1 }],
+          requestedCards: [{ cardId: 'greninja-xy', quantity: 1 }],
+        };
+
+        const result = await service.create(input);
+
+        expect(result.linkedWishlistId).toBe('wishlist-001');
+        expect(prismaServiceMock.trade.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({ linkedWishlistId: 'wishlist-001' }),
+          }),
+        );
+      });
     });
   });
 
@@ -271,6 +289,23 @@ describe('TradesService', () => {
         await service.findOne('id-qualquer').catch(() => {});
 
         expect(prismaServiceMock.trade.create).not.toHaveBeenCalled();
+      });
+
+      it('should return a trade preserving the linkedWishlistId', async () => {
+        const created = await service.create({
+          ownerId: 'clemont-lumiose',
+          linkedWishlistId: 'wishlist-002',
+          offeredCards: [{ cardId: 'heliolisk-xy', quantity: 1 }],
+          requestedCards: [{ cardId: 'chesnaught-xy', quantity: 1 }],
+        });
+
+        const found = await service.findOne(created.id);
+
+        expect(found.linkedWishlistId).toBe('wishlist-002');
+        expect(prismaServiceMock.trade.findUnique).toHaveBeenCalledWith({
+          where: { id: created.id },
+          include: { offeredCards: true, requestedCards: true },
+        });
       });
     });
   });
