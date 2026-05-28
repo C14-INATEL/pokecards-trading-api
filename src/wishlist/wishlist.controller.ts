@@ -44,7 +44,9 @@ export class WishlistController {
     description: 'Payload invalido para criacao da wishlist.',
     type: ValidationErrorResponseDto,
   })
-  create(@Body() createWishlistDto: CreateWishlistDto): Promise<WishlistResponseDto> {
+  create(
+    @Body() createWishlistDto: CreateWishlistDto,
+  ): Promise<WishlistResponseDto> {
     return this.wishlistService.create(createWishlistDto);
   }
 

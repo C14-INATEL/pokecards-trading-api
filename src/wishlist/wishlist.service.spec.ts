@@ -864,7 +864,10 @@ describe('update – mock puro', () => {
 
     prismaMock.wishlist.findUnique.mockResolvedValue(makePrismaWishlist());
     prismaMock.wishlist.update.mockResolvedValue(
-      makePrismaWishlist({ name: 'Nome Atualizado', items: [makePrismaItem()] }),
+      makePrismaWishlist({
+        name: 'Nome Atualizado',
+        items: [makePrismaItem()],
+      }),
     );
 
     await mockService.update('wishlist-uuid-001', dto);
@@ -875,7 +878,9 @@ describe('update – mock puro', () => {
         name: 'Nome Atualizado',
         items: {
           deleteMany: {},
-          create: [{ itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-001' }],
+          create: [
+            { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-001' },
+          ],
         },
       },
       include: { items: true },
@@ -962,7 +967,9 @@ describe('delete – mock puro', () => {
     prismaMock.wishlist.findUnique.mockResolvedValue(makePrismaWishlist());
     prismaMock.wishlist.delete.mockResolvedValue(makePrismaWishlist());
 
-    await expect(mockService.delete('wishlist-uuid-001')).resolves.toBeUndefined();
+    await expect(
+      mockService.delete('wishlist-uuid-001'),
+    ).resolves.toBeUndefined();
     expect(prismaMock.wishlist.delete).toHaveBeenCalledTimes(1);
   });
 
