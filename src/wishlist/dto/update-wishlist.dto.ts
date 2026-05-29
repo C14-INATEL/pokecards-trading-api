@@ -20,7 +20,8 @@ export class UpdateWishlistItemDto {
   itemType: WishlistItemType;
 
   @ApiPropertyOptional({
-    description: 'Identificador da carta quando o item representa uma carta especifica.',
+    description:
+      'Identificador da carta quando o item representa uma carta especifica.',
     format: 'uuid',
     nullable: true,
     example: 'a78df551-23ad-4eb2-8a9a-7090d455e44d',
@@ -58,7 +59,8 @@ export class UpdateWishlistDto {
   name?: string;
 
   @ApiPropertyOptional({
-    description: 'Nova lista completa de itens da wishlist. Quando enviada, substitui os itens atuais.',
+    description:
+      'Nova lista completa de itens da wishlist. Quando enviada, substitui os itens atuais.',
     type: [UpdateWishlistItemDto],
   })
   @IsOptional()
