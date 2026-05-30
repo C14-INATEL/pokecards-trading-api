@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotFoundException } from '@nestjs/common';
 import { TradeProposalService } from './trade-proposal.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTradeProposalDto } from './dto/create-trade-proposal.dto';
@@ -256,6 +257,89 @@ describe('TradeProposalService', () => {
         await service.create(dto);
 
         expect(prismaServiceMock.tradeProposal.create).toHaveBeenCalledTimes(1);
+      });
+    });
+  });
+
+  describe('findOne', () => {
+    describe('fluxo normal', () => {
+      it('should return a trade proposal when it exists', async () => {
+        const created = await service.create({
+          tradeId: 'trade-fo-001',
+          proposerId: 'user-fo-001',
+          offeredCards: [{ cardId: 'card-fo-001', quantity: 1 }],
+        });
+        const result = await service.findOne(created.id);
+        expect(result).toBeDefined();
+        expect(result.id).toBe(created.id);
+        expect(result.offeredCards).toHaveLength(1);
+      });
+
+      it('should return proposal with correct proposerId and status', async () => {
+        const created = await service.create({
+          tradeId: 'trade-fo-002',
+          proposerId: 'user-fo-002',
+          offeredCards: [],
+        });
+        const result = await service.findOne(created.id);
+        expect(result.proposerId).toBe('user-fo-002');
+        expect(result.status).toBe(ProposalStatus.PENDING);
+      });
+    });
+
+    describe('fluxo de extensão', () => {
+      it('should throw NotFoundException when proposal does not exist', async () => {
+        await expect(service.findOne('id-inexistente')).rejects.toThrow(
+          NotFoundException,
+        );
+      });
+
+      it('should call prisma.tradeProposal.findUnique with correct args', async () => {
+        const created = await service.create({
+          tradeId: 'trade-fo-003',
+          proposerId: 'user-fo-003',
+          offeredCards: [],
+        });
+        await service.findOne(created.id);
+        expect(prismaServiceMock.tradeProposal.findUnique).toHaveBeenCalledWith({
+          where: { id: created.id },
+          include: { offeredCards: true },
+        });
+      });
+    });
+  });
+
+  describe('findAll', () => {
+    describe('fluxo normal', () => {
+      it('should return all trade proposals', async () => {
+        await service.create({ tradeId: 'trade-fa-001', proposerId: 'user-fa-001', offeredCards: [] });
+        await service.create({ tradeId: 'trade-fa-002', proposerId: 'user-fa-002', offeredCards: [] });
+        const result = await service.findAll();
+        expect(result).toHaveLength(2);
+      });
+
+      it('should return only proposals matching tradeId filter', async () => {
+        await service.create({ tradeId: 'trade-fa-filter', proposerId: 'user-fa-003', offeredCards: [] });
+        await service.create({ tradeId: 'trade-fa-other', proposerId: 'user-fa-004', offeredCards: [] });
+        const result = await service.findAll('trade-fa-filter');
+        expect(result).toHaveLength(1);
+        expect(result[0].tradeId).toBe('trade-fa-filter');
+      });
+    });
+
+    describe('fluxo de extensão', () => {
+      it('should return empty array when no proposals exist', async () => {
+        const result = await service.findAll();
+        expect(result).toHaveLength(0);
+        expect(Array.isArray(result)).toBe(true);
+      });
+
+      it('should call prisma.tradeProposal.findMany with correct args', async () => {
+        await service.findAll('trade-fa-005');
+        expect(prismaServiceMock.tradeProposal.findMany).toHaveBeenCalledWith({
+          where: { tradeId: 'trade-fa-005' },
+          include: { offeredCards: true },
+        });
       });
     });
   });
