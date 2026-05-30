@@ -80,11 +80,11 @@ export class WishlistController {
     type: WishlistResponseDto,
   })
   @ApiBadRequestResponse({
-    description: 'Payload invalido para atualizacao da wishlist.',
+    description: 'Payload inválido para atualização da wishlist.',
     type: ValidationErrorResponseDto,
   })
   @ApiNotFoundResponse({
-    description: 'Wishlist nao encontrada.',
+    description: 'Wishlist não encontrada.',
     type: NotFoundResponseDto,
   })
   update(
@@ -106,7 +106,7 @@ export class WishlistController {
     description: 'Wishlist removida com sucesso.',
   })
   @ApiNotFoundResponse({
-    description: 'Wishlist nao encontrada.',
+    description: 'Wishlist não encontrada.',
     type: NotFoundResponseDto,
   })
   delete(@Param('id') id: string): Promise<void> {
