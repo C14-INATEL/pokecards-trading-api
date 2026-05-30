@@ -63,9 +63,7 @@ export class TradeProposalService {
       );
     }
     if (existing.status !== ProposalStatus.PENDING) {
-      throw new Error(
-        `Cannot update proposal with status ${existing.status}`,
-      );
+      throw new Error(`Cannot update proposal with status ${existing.status}`);
     }
     return this.prisma.tradeProposal.update({
       where: { id },

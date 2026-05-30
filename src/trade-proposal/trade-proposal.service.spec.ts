@@ -120,11 +120,21 @@ describe('TradeProposalService', () => {
 
     prismaServiceMock = {
       tradeProposal: {
-        create: jest.fn().mockImplementation((args) => inMemoryRepo.create(args)),
-        findUnique: jest.fn().mockImplementation((args) => inMemoryRepo.findUnique(args)),
-        findMany: jest.fn().mockImplementation((args) => inMemoryRepo.findMany(args)),
-        update: jest.fn().mockImplementation((args) => inMemoryRepo.update(args)),
-        delete: jest.fn().mockImplementation((args) => inMemoryRepo.delete(args)),
+        create: jest
+          .fn()
+          .mockImplementation((args) => inMemoryRepo.create(args)),
+        findUnique: jest
+          .fn()
+          .mockImplementation((args) => inMemoryRepo.findUnique(args)),
+        findMany: jest
+          .fn()
+          .mockImplementation((args) => inMemoryRepo.findMany(args)),
+        update: jest
+          .fn()
+          .mockImplementation((args) => inMemoryRepo.update(args)),
+        delete: jest
+          .fn()
+          .mockImplementation((args) => inMemoryRepo.delete(args)),
       },
     };
 
@@ -301,10 +311,12 @@ describe('TradeProposalService', () => {
           offeredCards: [],
         });
         await service.findOne(created.id);
-        expect(prismaServiceMock.tradeProposal.findUnique).toHaveBeenCalledWith({
-          where: { id: created.id },
-          include: { offeredCards: true },
-        });
+        expect(prismaServiceMock.tradeProposal.findUnique).toHaveBeenCalledWith(
+          {
+            where: { id: created.id },
+            include: { offeredCards: true },
+          },
+        );
       });
     });
   });
@@ -312,15 +324,31 @@ describe('TradeProposalService', () => {
   describe('findAll', () => {
     describe('fluxo normal', () => {
       it('should return all trade proposals', async () => {
-        await service.create({ tradeId: 'trade-fa-001', proposerId: 'user-fa-001', offeredCards: [] });
-        await service.create({ tradeId: 'trade-fa-002', proposerId: 'user-fa-002', offeredCards: [] });
+        await service.create({
+          tradeId: 'trade-fa-001',
+          proposerId: 'user-fa-001',
+          offeredCards: [],
+        });
+        await service.create({
+          tradeId: 'trade-fa-002',
+          proposerId: 'user-fa-002',
+          offeredCards: [],
+        });
         const result = await service.findAll();
         expect(result).toHaveLength(2);
       });
 
       it('should return only proposals matching tradeId filter', async () => {
-        await service.create({ tradeId: 'trade-fa-filter', proposerId: 'user-fa-003', offeredCards: [] });
-        await service.create({ tradeId: 'trade-fa-other', proposerId: 'user-fa-004', offeredCards: [] });
+        await service.create({
+          tradeId: 'trade-fa-filter',
+          proposerId: 'user-fa-003',
+          offeredCards: [],
+        });
+        await service.create({
+          tradeId: 'trade-fa-other',
+          proposerId: 'user-fa-004',
+          offeredCards: [],
+        });
         const result = await service.findAll('trade-fa-filter');
         expect(result).toHaveLength(1);
         expect(result[0].tradeId).toBe('trade-fa-filter');
@@ -352,7 +380,10 @@ describe('TradeProposalService', () => {
           proposerId: 'user-u-001',
           offeredCards: [{ cardId: 'card-u-001', quantity: 1 }],
         });
-        const result = await service.update(created.id, ProposalStatus.ACCEPTED);
+        const result = await service.update(
+          created.id,
+          ProposalStatus.ACCEPTED,
+        );
         expect(result.status).toBe(ProposalStatus.ACCEPTED);
       });
 
@@ -362,7 +393,10 @@ describe('TradeProposalService', () => {
           proposerId: 'user-u-002',
           offeredCards: [],
         });
-        const result = await service.update(created.id, ProposalStatus.REJECTED);
+        const result = await service.update(
+          created.id,
+          ProposalStatus.REJECTED,
+        );
         expect(result.status).toBe(ProposalStatus.REJECTED);
       });
     });
@@ -375,7 +409,9 @@ describe('TradeProposalService', () => {
       });
 
       it('should not call prisma.tradeProposal.update when proposal does not exist', async () => {
-        await service.update('id-inexistente', ProposalStatus.ACCEPTED).catch(() => {});
+        await service
+          .update('id-inexistente', ProposalStatus.ACCEPTED)
+          .catch(() => {});
         expect(prismaServiceMock.tradeProposal.update).not.toHaveBeenCalled();
       });
     });
@@ -402,13 +438,17 @@ describe('TradeProposalService', () => {
           offeredCards: [{ cardId: 'card-d-001', quantity: 1 }],
         });
         await service.delete(created.id);
-        await expect(service.findOne(created.id)).rejects.toThrow(NotFoundException);
+        await expect(service.findOne(created.id)).rejects.toThrow(
+          NotFoundException,
+        );
       });
     });
 
     describe('fluxo de extensão', () => {
       it('should throw NotFoundException when proposal does not exist', async () => {
-        await expect(service.delete('id-inexistente')).rejects.toThrow(NotFoundException);
+        await expect(service.delete('id-inexistente')).rejects.toThrow(
+          NotFoundException,
+        );
       });
 
       it('should not call prisma.tradeProposal.delete when proposal does not exist', async () => {
