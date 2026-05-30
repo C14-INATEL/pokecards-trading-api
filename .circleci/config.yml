@@ -53,7 +53,7 @@ jobs:
             - node_modules
       - run:
           name: Run unit tests
-          command: npm run test
+          command: npm run test -- --coverage
       - store_artifacts:
           path: coverage
           destination: test-coverage
