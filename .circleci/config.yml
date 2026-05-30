@@ -37,8 +37,30 @@ jobs:
 
   # test — Gabriel Baldoni
 
+  test:
+    executor: node-executor
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-deps-{{ checksum "package-lock.json" }}
+      - run:
+          name: Install dependencies
+          command: npm ci
+      - save_cache:
+          key: v1-deps-{{ checksum "package-lock.json" }}
+          paths:
+            - node_modules
+      - run:
+          name: Run unit tests
+          command: npm run test
+      - store_artifacts:
+          path: coverage
+          destination: test-coverage
+
   # build — Ian
-    build:
+
+  build:
     executor: node-executor
     steps:
       - checkout
@@ -51,8 +73,10 @@ jobs:
           name: Build project
           command: npm run build
 
-    deploy:
-     executor: node-executor
+  # deploy — Fábio
+
+  deploy:
+    executor: node-executor
     steps:
       - run:
           name: Validate deploy hook is configured
@@ -74,12 +98,14 @@ jobs:
 
 workflows:
   ci-cd:
-    jobs:           # roda em todos os branches
-      - build
+    jobs:
+      - lint
+      - test:
+          requires: [lint]
+      - build:
+          requires: [test]
       - deploy:
-          requires:
-            - build
+          requires: [build]
           filters:
             branches:
-              only:
-                - main
+              only: [main]
