@@ -53,6 +53,45 @@ class InMemoryTradeProposalRepository {
     return Promise.resolve({ ...proposal });
   }
 
+  findUnique(args: {
+    where: { id: string };
+    include?: { offeredCards: boolean };
+  }): Promise<TradeProposalWithItems | null> {
+    const proposal = this.proposals.get(args.where.id);
+    if (!proposal) return Promise.resolve(null);
+    return Promise.resolve({ ...proposal });
+  }
+
+  findMany(args: {
+    where?: { tradeId?: string };
+    include?: { offeredCards: boolean };
+  }): Promise<TradeProposalWithItems[]> {
+    let result = Array.from(this.proposals.values());
+    if (args.where?.tradeId) {
+      result = result.filter((p) => p.tradeId === args.where!.tradeId);
+    }
+    return Promise.resolve(result.map((p) => ({ ...p })));
+  }
+
+  update(args: {
+    where: { id: string };
+    data: { status: ProposalStatus };
+    include?: { offeredCards: boolean };
+  }): Promise<TradeProposalWithItems> {
+    const proposal = this.proposals.get(args.where.id);
+    if (!proposal) throw new Error('Not found');
+    proposal.status = args.data.status;
+    this.proposals.set(args.where.id, proposal);
+    return Promise.resolve({ ...proposal });
+  }
+
+  delete(args: { where: { id: string } }): Promise<TradeProposalWithItems> {
+    const proposal = this.proposals.get(args.where.id);
+    if (!proposal) return Promise.resolve(null as any);
+    this.proposals.delete(args.where.id);
+    return Promise.resolve(proposal);
+  }
+
   clear(): void {
     this.proposals.clear();
     this.items.clear();
@@ -68,6 +107,10 @@ describe('TradeProposalService', () => {
   let prismaServiceMock: {
     tradeProposal: {
       create: jest.Mock;
+      findUnique: jest.Mock;
+      findMany: jest.Mock;
+      update: jest.Mock;
+      delete: jest.Mock;
     };
   };
 
@@ -76,9 +119,11 @@ describe('TradeProposalService', () => {
 
     prismaServiceMock = {
       tradeProposal: {
-        create: jest
-          .fn()
-          .mockImplementation((args) => inMemoryRepo.create(args)),
+        create: jest.fn().mockImplementation((args) => inMemoryRepo.create(args)),
+        findUnique: jest.fn().mockImplementation((args) => inMemoryRepo.findUnique(args)),
+        findMany: jest.fn().mockImplementation((args) => inMemoryRepo.findMany(args)),
+        update: jest.fn().mockImplementation((args) => inMemoryRepo.update(args)),
+        delete: jest.fn().mockImplementation((args) => inMemoryRepo.delete(args)),
       },
     };
 
