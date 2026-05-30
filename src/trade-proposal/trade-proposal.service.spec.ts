@@ -343,4 +343,78 @@ describe('TradeProposalService', () => {
       });
     });
   });
+
+  describe('update', () => {
+    describe('fluxo normal', () => {
+      it('should accept a PENDING proposal', async () => {
+        const created = await service.create({
+          tradeId: 'trade-u-001',
+          proposerId: 'user-u-001',
+          offeredCards: [{ cardId: 'card-u-001', quantity: 1 }],
+        });
+        const result = await service.update(created.id, ProposalStatus.ACCEPTED);
+        expect(result.status).toBe(ProposalStatus.ACCEPTED);
+      });
+
+      it('should reject a PENDING proposal', async () => {
+        const created = await service.create({
+          tradeId: 'trade-u-002',
+          proposerId: 'user-u-002',
+          offeredCards: [],
+        });
+        const result = await service.update(created.id, ProposalStatus.REJECTED);
+        expect(result.status).toBe(ProposalStatus.REJECTED);
+      });
+    });
+
+    describe('fluxo de extensão', () => {
+      it('should throw NotFoundException when proposal does not exist', async () => {
+        await expect(
+          service.update('id-inexistente', ProposalStatus.ACCEPTED),
+        ).rejects.toThrow(NotFoundException);
+      });
+
+      it('should not call prisma.tradeProposal.update when proposal does not exist', async () => {
+        await service.update('id-inexistente', ProposalStatus.ACCEPTED).catch(() => {});
+        expect(prismaServiceMock.tradeProposal.update).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('delete', () => {
+    describe('fluxo normal', () => {
+      it('should delete an existing trade proposal without error', async () => {
+        const created = await service.create({
+          tradeId: 'trade-d-001',
+          proposerId: 'user-d-001',
+          offeredCards: [],
+        });
+        await expect(service.delete(created.id)).resolves.toBeUndefined();
+        expect(prismaServiceMock.tradeProposal.delete).toHaveBeenCalledWith({
+          where: { id: created.id },
+        });
+      });
+
+      it('should make proposal unreachable after deletion', async () => {
+        const created = await service.create({
+          tradeId: 'trade-d-002',
+          proposerId: 'user-d-002',
+          offeredCards: [{ cardId: 'card-d-001', quantity: 1 }],
+        });
+        await service.delete(created.id);
+        await expect(service.findOne(created.id)).rejects.toThrow(NotFoundException);
+      });
+    });
+
+    describe('fluxo de extensão', () => {
+      it('should throw NotFoundException when proposal does not exist', async () => {
+        await expect(service.delete('id-inexistente')).rejects.toThrow(NotFoundException);
+      });
+
+      it('should not call prisma.tradeProposal.delete when proposal does not exist', async () => {
+        await service.delete('id-inexistente').catch(() => {});
+        expect(prismaServiceMock.tradeProposal.delete).not.toHaveBeenCalled();
+      });
+    });
+  });
 });
