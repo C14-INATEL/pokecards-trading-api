@@ -4,7 +4,6 @@ import {
   ApiOperation,
   ApiCreatedResponse,
   ApiBadRequestResponse,
-  ApiExtraModels,
 } from '@nestjs/swagger';
 import { TradeProposalService } from './trade-proposal.service';
 import { CreateTradeProposalDto } from './dto/create-trade-proposal.dto';
@@ -12,7 +11,6 @@ import { TradeProposalResponseDto } from './dto/trade-proposal-response.dto';
 import { ValidationErrorResponseDto } from '../common/dto/validation-error-response.dto';
 
 @ApiTags('Trade Proposals')
-@ApiExtraModels(TradeProposalResponseDto)
 @Controller('trade-proposals')
 export class TradeProposalController {
   constructor(private readonly tradeProposalService: TradeProposalService) {}
