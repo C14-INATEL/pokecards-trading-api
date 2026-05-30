@@ -38,9 +38,21 @@ jobs:
   # test — Gabriel Baldoni
 
   # build — Ian
-
-  deploy:
+    build:
     executor: node-executor
+    steps:
+      - checkout
+
+      - run:
+          name: Install dependencies
+          command: npm install
+
+      - run:
+          name: Build project
+          command: npm run build
+
+    deploy:
+     executor: node-executor
     steps:
       - run:
           name: Validate deploy hook is configured
@@ -62,8 +74,11 @@ jobs:
 
 workflows:
   ci-cd:
-    jobs:
+    jobs:           # roda em todos os branches
+      - build
       - deploy:
+          requires:
+            - build
           filters:
             branches:
               only:
