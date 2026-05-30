@@ -16,6 +16,25 @@ executors:
 jobs:
   # lint — Gabriel Renato
 
+  lint:
+    executor: node-executor
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - node-deps-{{ checksum "package-lock.json" }}
+            - node-deps-
+      - run:
+          name: Install dependencies
+          command: npm ci
+      - save_cache:
+          key: node-deps-{{ checksum "package-lock.json" }}
+          paths:
+            - ~/.npm
+      - run:
+          name: Run lint
+          command: npm run lint
+
   # test — Gabriel Baldoni
 
   # build — Ian
