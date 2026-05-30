@@ -18,6 +18,7 @@ import {
   ApiNoContentResponse,
   ApiBadRequestResponse,
   ApiNotFoundResponse,
+  ApiConflictResponse,
   ApiParam,
 } from '@nestjs/swagger';
 import { TradeProposalService } from './trade-proposal.service';
@@ -86,6 +87,10 @@ export class TradeProposalController {
     description: 'Proposta não encontrada.',
     type: NotFoundResponseDto,
   })
+  @ApiConflictResponse({
+    description: 'Proposta não está com status PENDING.',
+    type: NotFoundResponseDto,
+  })
   accept(@Param('id') id: string): Promise<TradeProposalResponseDto> {
     return this.tradeProposalService.update(id, ProposalStatus.ACCEPTED);
   }
@@ -101,6 +106,10 @@ export class TradeProposalController {
     description: 'Proposta não encontrada.',
     type: NotFoundResponseDto,
   })
+  @ApiConflictResponse({
+    description: 'Proposta não está com status PENDING.',
+    type: NotFoundResponseDto,
+  })
   reject(@Param('id') id: string): Promise<TradeProposalResponseDto> {
     return this.tradeProposalService.update(id, ProposalStatus.REJECTED);
   }
@@ -114,6 +123,10 @@ export class TradeProposalController {
   })
   @ApiNotFoundResponse({
     description: 'Proposta não encontrada.',
+    type: NotFoundResponseDto,
+  })
+  @ApiConflictResponse({
+    description: 'Proposta não está com status PENDING.',
     type: NotFoundResponseDto,
   })
   cancel(@Param('id') id: string): Promise<TradeProposalResponseDto> {
