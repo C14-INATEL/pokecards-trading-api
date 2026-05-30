@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, ConflictException } from '@nestjs/common';
 import { TradeProposalService } from './trade-proposal.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTradeProposalDto } from './dto/create-trade-proposal.dto';
@@ -413,6 +413,20 @@ describe('TradeProposalService', () => {
           .update('id-inexistente', ProposalStatus.ACCEPTED)
           .catch(() => {});
         expect(prismaServiceMock.tradeProposal.update).not.toHaveBeenCalled();
+      });
+
+      it('should throw ConflictException when proposal status is not PENDING', async () => {
+        const created = await service.create({
+          tradeId: 'trade-u-003',
+          proposerId: 'user-u-003',
+          offeredCards: [],
+        });
+
+        await service.update(created.id, ProposalStatus.ACCEPTED);
+
+        await expect(
+          service.update(created.id, ProposalStatus.ACCEPTED),
+        ).rejects.toThrow(ConflictException);
       });
     });
   });

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTradeProposalDto } from './dto/create-trade-proposal.dto';
 import { ProposalStatus, TradeProposal, ProposalItem } from '@prisma/client';
@@ -63,7 +63,9 @@ export class TradeProposalService {
       );
     }
     if (existing.status !== ProposalStatus.PENDING) {
-      throw new Error(`Cannot update proposal with status ${existing.status}`);
+      throw new ConflictException(
+        `Cannot update proposal with status ${existing.status}`,
+      );
     }
     return this.prisma.tradeProposal.update({
       where: { id },
