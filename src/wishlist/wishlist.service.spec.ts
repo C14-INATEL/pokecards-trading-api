@@ -577,7 +577,7 @@ describe('WishlistService', () => {
 
         await service.delete(created.id);
 
-        const found = await service.findOne(created.id);
+        const found = await inMemoryRepo.findUnique({ where: { id: created.id } });
         expect(found).toBeNull();
       });
     });
