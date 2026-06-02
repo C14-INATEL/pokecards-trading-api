@@ -607,19 +607,31 @@ describe('fluxo de extensão', () => {
       });
     });
 
-    describe('fluxo de extensão', () => {
-      it('should throw NotFoundException when deleting a non-existent wishlist', async () => {
-        await expect(service.delete('id-inexistente')).rejects.toThrow(
-          NotFoundException,
-        );
-      });
+describe('fluxo de extensão', () => {
+  it('should throw NotFoundException when deleting a non-existent wishlist', async () => {
+    await expect(service.delete('id-inexistente')).rejects.toThrow(
+      NotFoundException,
+    );
 
-      it('should not call prisma.delete when wishlist does not exist', async () => {
-        await service.delete('id-inexistente').catch(() => {});
+    expect(prismaServiceMock.wishlist.delete).not.toHaveBeenCalled();
+  });
 
-        expect(prismaServiceMock.wishlist.delete).not.toHaveBeenCalled();
-      });
+  it('should call prisma.delete with correct id', async () => {
+    const created = await service.create({
+      userId: 'user-del-3',
+      name: 'Lista Delete Check',
+      items: [],
     });
+
+    await service.delete(created.id);
+
+    expect(prismaServiceMock.wishlist.delete).toHaveBeenCalledWith({
+      where: { id: created.id },
+    });
+    expect(prismaServiceMock.wishlist.delete).toHaveBeenCalledTimes(1);
+  });
+});
+
   });
 });
 
