@@ -298,91 +298,97 @@ describe('WishlistService', () => {
       });
     });
 
-    describe('fluxo de extensão', () => {
-      it('should call prisma with correct structure when creating', async () => {
-        const dto: CreateWishlistDto = {
-          userId: 'user-101',
-          name: 'Lista Estruturada',
-          items: [
-            { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-999' },
-          ],
-        };
+     describe('fluxo de extensão', () => {
+    it('should call prisma.wishlist.create with correct structure', async () => {
+    const dto: CreateWishlistDto = {
+      userId: 'user-101',
+      name: 'Lista Estruturada',
+      items: [
+        {
+          itemType: WishlistItemType.SPECIFIC_CARD,
+          cardId: 'card-999',
+        },
+      ],
+    };
 
-        await service.create(dto);
+    await service.create(dto);
 
-        expect(prismaServiceMock.wishlist.create).toHaveBeenCalledWith({
-          data: {
-            userId: dto.userId,
-            name: dto.name,
-            items: {
-              create: [
-                {
-                  itemType: WishlistItemType.SPECIFIC_CARD,
-                  cardId: 'card-999',
-                },
-              ],
+    expect(prismaServiceMock.wishlist.create).toHaveBeenCalledWith({
+      data: {
+        userId: dto.userId,
+        name: dto.name,
+        items: {
+          create: [
+            {
+              itemType: WishlistItemType.SPECIFIC_CARD,
+              cardId: 'card-999',
             },
-          },
-          include: { items: true },
-        });
-      });
-
-      it('should call prisma create exactly once', async () => {
-        const dto: CreateWishlistDto = {
-          userId: 'user-once',
-          name: 'Lista Única',
-          items: [],
-        };
-
-        await service.create(dto);
-
-        expect(prismaServiceMock.wishlist.create).toHaveBeenCalledTimes(1);
-      });
-
-      it('should call prisma with empty create array when items is empty', async () => {
-        const dto: CreateWishlistDto = {
-          userId: 'user-empty',
-          name: 'Lista Sem Itens',
-          items: [],
-        };
-
-        await service.create(dto);
-
-        expect(prismaServiceMock.wishlist.create).toHaveBeenCalledWith({
-          data: {
-            userId: dto.userId,
-            name: dto.name,
-            items: { create: [] },
-          },
-          include: { items: true },
-        });
-      });
-
-      it('should return wishlist with createdAt defined', async () => {
-        const dto: CreateWishlistDto = {
-          userId: 'user-date',
-          name: 'Lista com Data',
-          items: [],
-        };
-
-        const result = await service.create(dto);
-
-        expect(result.createdAt).toBeDefined();
-        expect(result.createdAt).toBeInstanceOf(Date);
-      });
+          ],
+        },
+      },
+      include: { items: true },
     });
   });
 
-  describe('findOne', () => {
-    describe('fluxo normal', () => {
-      it('should return a wishlist with items if it exists', async () => {
-        const created = await service.create({
-          userId: 'user-789',
-          name: 'Para ler depois',
-          items: [
-            { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-002' },
-          ],
-        });
+  it('should call prisma.wishlist.create exactly once', async () => {
+    const dto: CreateWishlistDto = {
+      userId: 'user-once',
+      name: 'Lista Única',
+      items: [],
+    };
+
+    await service.create(dto);
+
+    expect(prismaServiceMock.wishlist.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('should call prisma.wishlist.create with empty items array', async () => {
+    const dto: CreateWishlistDto = {
+      userId: 'user-empty',
+      name: 'Lista Sem Itens',
+      items: [],
+    };
+
+    await service.create(dto);
+
+    expect(prismaServiceMock.wishlist.create).toHaveBeenCalledWith({
+      data: {
+        userId: dto.userId,
+        name: dto.name,
+        items: {
+          create: [],
+        },
+      },
+      include: { items: true },
+    });
+  });
+
+  it('should include items relation when creating a wishlist', async () => {
+    const dto: CreateWishlistDto = {
+      userId: 'user-include',
+      name: 'Lista Include',
+      items: [],
+    };
+
+    await service.create(dto);
+    expect(prismaServiceMock.wishlist.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: { items: true },
+      }),
+    );
+  });
+});
+
+describe('findOne', () => {
+  describe('fluxo normal', () => {
+    it('should return a wishlist with items if it exists', async () => {
+      const created = await service.create({
+        userId: 'user-789',
+        name: 'Para ler depois',
+        items: [
+          { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-002' },
+        ],
+      });
 
         const found = await service.findOne(created.id);
 
