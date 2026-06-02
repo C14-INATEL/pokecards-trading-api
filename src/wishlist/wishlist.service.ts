@@ -41,7 +41,7 @@ export class WishlistService {
     const existing = await this.prisma.wishlist.findUnique({ where: { id } });
 
     if (!existing) {
-      throw new NotFoundException(`Wishlist with id "${id}" not found`);
+      throw new NotFoundException(`Wishlist com id "${id}" não encontrada`);
     }
 
     const { name, items } = updateWishlistDto;
@@ -65,7 +65,7 @@ export class WishlistService {
     const existing = await this.prisma.wishlist.findUnique({ where: { id } });
 
     if (!existing) {
-      throw new NotFoundException(`Wishlist with id "${id}" not found`);
+      throw new NotFoundException(`Wishlist com id "${id}" não encontrada`);
     }
 
     await this.prisma.wishlist.delete({ where: { id } });

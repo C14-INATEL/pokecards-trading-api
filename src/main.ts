@@ -20,7 +20,10 @@ async function bootstrap() {
     )
     .setVersion('1.0.0')
     .addTag('Health', 'Verificacao de disponibilidade da API.')
-    .addTag('Wishlists', 'Operacoes para criar, consultar, atualizar e remover wishlists.')
+    .addTag(
+      'Wishlists',
+      'Operacoes para criar, consultar, atualizar e remover wishlists.',
+    )
     .addTag('Trades', 'Operacoes para criar e consultar trocas.')
     .addTag('Trade Proposals', 'Operacoes para registrar propostas de troca.')
     .build();
@@ -33,4 +36,4 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 3000);
 }
-bootstrap();
+void bootstrap();

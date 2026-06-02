@@ -3,50 +3,51 @@ import { ProposalStatus } from '@prisma/client';
 
 export class ProposalItemResponseDto {
   @ApiProperty({
-    description: 'Identificador do item oferecido na proposta.',
+    description: 'Identificador do item da proposta.',
     format: 'uuid',
-    example: '3fb52d0f-3d65-4113-bd1f-4478f8581e4f',
+    example: '4f2e0d8a-3292-4a52-87ec-2d283f0155e5',
   })
   id: string;
 
   @ApiProperty({
+    description: 'Identificador da proposta associada ao item.',
+    format: 'uuid',
+    example: '8d5530de-bd66-4de9-bf68-ddf0fd49b7f2',
+  })
+  proposalId: string;
+
+  @ApiProperty({
     description: 'Identificador da carta oferecida.',
-    example: 'charizard-base-set',
+    format: 'uuid',
+    example: 'a78df551-23ad-4eb2-8a9a-7090d455e44d',
   })
   cardId: string;
 
   @ApiProperty({
     description: 'Quantidade da carta oferecida.',
-    example: 1,
+    example: 2,
   })
   quantity: number;
-
-  @ApiProperty({
-    description: 'Identificador da proposta associada.',
-    format: 'uuid',
-    example: '10a4a04f-3f13-4ed5-989e-0d87868fb306',
-  })
-  proposalId: string;
 }
 
 export class TradeProposalResponseDto {
   @ApiProperty({
     description: 'Identificador da proposta.',
     format: 'uuid',
-    example: '10a4a04f-3f13-4ed5-989e-0d87868fb306',
+    example: '8d5530de-bd66-4de9-bf68-ddf0fd49b7f2',
   })
   id: string;
 
   @ApiProperty({
-    description: 'Identificador da troca associada a proposta.',
+    description: 'Identificador da trade associada.',
     format: 'uuid',
-    example: '8d5530de-bd66-4de9-bf68-ddf0fd49b7f2',
+    example: '3a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d',
   })
   tradeId: string;
 
   @ApiProperty({
-    description: 'Identificador do usuario que enviou a proposta.',
-    example: 'misty-waterflower',
+    description: 'Identificador do usuário que fez a proposta.',
+    example: 'ash-ketchum',
   })
   proposerId: string;
 
@@ -58,17 +59,17 @@ export class TradeProposalResponseDto {
   status: ProposalStatus;
 
   @ApiPropertyOptional({
-    description: 'Mensagem opcional enviada junto com a proposta.',
+    description: 'Mensagem opcional enviada com a proposta.',
     nullable: true,
-    example: 'Posso incluir uma carta rara adicional nesta troca.',
+    example: 'Tenho interesse nas suas cartas raras!',
   })
   message?: string | null;
 
   @ApiProperty({
-    description: 'Data de criacao da proposta.',
+    description: 'Data de criação da proposta.',
     type: String,
     format: 'date-time',
-    example: '2026-04-10T16:08:45.000Z',
+    example: '2026-04-10T15:22:31.000Z',
   })
   createdAt: Date;
 

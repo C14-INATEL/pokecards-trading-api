@@ -19,7 +19,6 @@ import {
   ApiOperation,
   ApiParam,
   ApiTags,
-  getSchemaPath,
 } from '@nestjs/swagger';
 import { WishlistService } from './wishlist.service';
 import { CreateWishlistDto } from './dto/create-wishlist.dto';
@@ -41,10 +40,12 @@ export class WishlistController {
     type: WishlistResponseDto,
   })
   @ApiBadRequestResponse({
-    description: 'Payload invalido para criacao da wishlist.',
+    description: 'Payload inválido para criação da wishlist.',
     type: ValidationErrorResponseDto,
   })
-  create(@Body() createWishlistDto: CreateWishlistDto): Promise<WishlistResponseDto> {
+  create(
+    @Body() createWishlistDto: CreateWishlistDto,
+  ): Promise<WishlistResponseDto> {
     return this.wishlistService.create(createWishlistDto);
   }
 
@@ -56,14 +57,14 @@ export class WishlistController {
     schema: { type: 'string', format: 'uuid' },
   })
   @ApiOkResponse({
-    description:
-      'Retorna a wishlist quando encontrada. Atualmente, ids inexistentes retornam null com status 200.',
-    schema: {
-      nullable: true,
-      allOf: [{ $ref: getSchemaPath(WishlistResponseDto) }],
-    },
+    description: 'Wishlist encontrada com sucesso.',
+    type: WishlistResponseDto,
   })
-  findOne(@Param('id') id: string): Promise<WishlistResponseDto | null> {
+  @ApiNotFoundResponse({
+    description: 'Wishlist não encontrada.',
+    type: NotFoundResponseDto,
+  })
+  findOne(@Param('id') id: string): Promise<WishlistResponseDto> {
     return this.wishlistService.findOne(id);
   }
 
@@ -79,11 +80,11 @@ export class WishlistController {
     type: WishlistResponseDto,
   })
   @ApiBadRequestResponse({
-    description: 'Payload invalido para atualizacao da wishlist.',
+    description: 'Payload inválido para atualização da wishlist.',
     type: ValidationErrorResponseDto,
   })
   @ApiNotFoundResponse({
-    description: 'Wishlist nao encontrada.',
+    description: 'Wishlist não encontrada.',
     type: NotFoundResponseDto,
   })
   update(
@@ -105,7 +106,7 @@ export class WishlistController {
     description: 'Wishlist removida com sucesso.',
   })
   @ApiNotFoundResponse({
-    description: 'Wishlist nao encontrada.',
+    description: 'Wishlist não encontrada.',
     type: NotFoundResponseDto,
   })
   delete(@Param('id') id: string): Promise<void> {

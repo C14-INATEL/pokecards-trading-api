@@ -6,6 +6,12 @@ import { TradeProposalModule } from './trade-proposal/trade-proposal.module';
 import { HealthModule } from './health/health.module';
 
 @Module({
-  imports: [PrismaModule, WishlistModule, TradesModule, TradeProposalModule, HealthModule],
+  imports: [
+    PrismaModule,
+    WishlistModule,
+    TradesModule,
+    TradeProposalModule,
+    HealthModule,
+  ],
 })
 export class AppModule {}

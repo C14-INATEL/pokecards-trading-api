@@ -1,0 +1,111 @@
+version: 2.1
+
+# Pokecards Trading API — CircleCI pipeline
+# Job ownership:
+#   - lint   → Gabriel Renato
+#   - test   → Gabriel Baldoni
+#   - build  → Ian
+#   - deploy → Fábio
+
+executors:
+  node-executor:
+    docker:
+      - image: cimg/node:22.11
+    working_directory: ~/repo
+
+jobs:
+  # lint — Gabriel Renato
+
+  lint:
+    executor: node-executor
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - node-deps-{{ checksum "package-lock.json" }}
+            - node-deps-
+      - run:
+          name: Install dependencies
+          command: npm ci
+      - save_cache:
+          key: node-deps-{{ checksum "package-lock.json" }}
+          paths:
+            - ~/.npm
+      - run:
+          name: Run lint
+          command: npm run lint
+
+  # test — Gabriel Baldoni
+
+  test:
+    executor: node-executor
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-deps-{{ checksum "package-lock.json" }}
+      - run:
+          name: Install dependencies
+          command: npm ci
+      - save_cache:
+          key: v1-deps-{{ checksum "package-lock.json" }}
+          paths:
+            - node_modules
+      - run:
+          name: Run unit tests
+          command: npm run test -- --coverage
+      - store_artifacts:
+          path: coverage
+          destination: test-coverage
+
+  # build — Ian
+
+  build:
+    executor: node-executor
+    steps:
+      - checkout
+
+      - run:
+          name: Install dependencies
+          command: npm install
+
+      - run:
+          name: Build project
+          command: npm run build
+
+  # deploy — Fábio
+
+  deploy:
+    executor: node-executor
+    steps:
+      - run:
+          name: Validate deploy hook is configured
+          command: |
+            if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+              echo "ERROR: RENDER_DEPLOY_HOOK_URL is not set."
+              exit 1
+            fi
+      - run:
+          name: Trigger Render deploy
+          command: |
+            HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+              -X POST "$RENDER_DEPLOY_HOOK_URL")
+            echo "Render responded with HTTP $HTTP_CODE"
+            cat /tmp/response.json || true
+            if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+              exit 1
+            fi
+
+workflows:
+  ci-cd:
+    jobs:
+      - lint
+      - test:
+          requires: [lint]
+      - build:
+          requires: [test]
+      - deploy:
+          requires: [build]
+          filters:
+            branches:
+              only: [main]
