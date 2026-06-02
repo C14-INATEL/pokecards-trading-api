@@ -532,48 +532,51 @@ describe('WishlistService', () => {
       });
     });
 
-describe('fluxo de extensão', () => {
-  it('should call prisma.update with correct structure', async () => {
-    const created = await service.create({
-      userId: 'user-upd-3',
-      name: 'Lista Check',
-      items: [],
-    });
+    describe('fluxo de extensão', () => {
+      it('should call prisma.update with correct structure', async () => {
+        const created = await service.create({
+          userId: 'user-upd-3',
+          name: 'Lista Check',
+          items: [],
+        });
 
-    const dto: UpdateWishlistDto = {
-      name: 'Nome Atualizado',
-      items: [
-        { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-001' },
-      ],
-    };
-
-    await service.update(created.id, dto);
-
-    expect(prismaServiceMock.wishlist.update).toHaveBeenCalledWith({
-      where: { id: created.id },
-      data: {
-        name: 'Nome Atualizado',
-        items: {
-          deleteMany: {},
-          create: [
+        const dto: UpdateWishlistDto = {
+          name: 'Nome Atualizado',
+          items: [
             { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-001' },
           ],
-        },
-      },
-      include: { items: true },
+        };
+
+        await service.update(created.id, dto);
+
+        expect(prismaServiceMock.wishlist.update).toHaveBeenCalledWith({
+          where: { id: created.id },
+          data: {
+            name: 'Nome Atualizado',
+            items: {
+              deleteMany: {},
+              create: [
+                {
+                  itemType: WishlistItemType.SPECIFIC_CARD,
+                  cardId: 'card-001',
+                },
+              ],
+            },
+          },
+          include: { items: true },
+        });
+      });
+
+      it('should throw NotFoundException when updating a non-existent wishlist', async () => {
+        const dto: UpdateWishlistDto = { name: 'Qualquer Nome' };
+
+        await expect(service.update('id-inexistente', dto)).rejects.toThrow(
+          NotFoundException,
+        );
+
+        expect(prismaServiceMock.wishlist.update).not.toHaveBeenCalled();
+      });
     });
-  });
-
-  it('should throw NotFoundException when updating a non-existent wishlist', async () => {
-    const dto: UpdateWishlistDto = { name: 'Qualquer Nome' };
-
-    await expect(service.update('id-inexistente', dto)).rejects.toThrow(
-      NotFoundException,
-    );
-
-    expect(prismaServiceMock.wishlist.update).not.toHaveBeenCalled();
-    });
-   });
   });
 
   describe('delete', () => {
@@ -602,36 +605,37 @@ describe('fluxo de extensão', () => {
 
         await service.delete(created.id);
 
-        const found = await inMemoryRepo.findUnique({ where: { id: created.id } });
+        const found = await inMemoryRepo.findUnique({
+          where: { id: created.id },
+        });
         expect(found).toBeNull();
       });
     });
 
-describe('fluxo de extensão', () => {
-  it('should throw NotFoundException when deleting a non-existent wishlist', async () => {
-    await expect(service.delete('id-inexistente')).rejects.toThrow(
-      NotFoundException,
-    );
+    describe('fluxo de extensão', () => {
+      it('should throw NotFoundException when deleting a non-existent wishlist', async () => {
+        await expect(service.delete('id-inexistente')).rejects.toThrow(
+          NotFoundException,
+        );
 
-    expect(prismaServiceMock.wishlist.delete).not.toHaveBeenCalled();
-  });
+        expect(prismaServiceMock.wishlist.delete).not.toHaveBeenCalled();
+      });
 
-  it('should call prisma.delete with correct id', async () => {
-    const created = await service.create({
-      userId: 'user-del-3',
-      name: 'Lista Delete Check',
-      items: [],
+      it('should call prisma.delete with correct id', async () => {
+        const created = await service.create({
+          userId: 'user-del-3',
+          name: 'Lista Delete Check',
+          items: [],
+        });
+
+        await service.delete(created.id);
+
+        expect(prismaServiceMock.wishlist.delete).toHaveBeenCalledWith({
+          where: { id: created.id },
+        });
+        expect(prismaServiceMock.wishlist.delete).toHaveBeenCalledTimes(1);
+      });
     });
-
-    await service.delete(created.id);
-
-    expect(prismaServiceMock.wishlist.delete).toHaveBeenCalledWith({
-      where: { id: created.id },
-    });
-    expect(prismaServiceMock.wishlist.delete).toHaveBeenCalledTimes(1);
-  });
-});
-
   });
 });
 

@@ -228,6 +228,7 @@ describe('TradesService', () => {
         expect(result.linkedWishlistId).toBe('wishlist-001');
         expect(prismaServiceMock.trade.create).toHaveBeenCalledWith(
           expect.objectContaining({
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             data: expect.objectContaining({ linkedWishlistId: 'wishlist-001' }),
           }),
         );
