@@ -672,12 +672,12 @@ describe('findOne – mock puro', () => {
     expect(result?.items).toHaveLength(1);
   });
 
-  it('deve retornar null quando prisma retorna null', async () => {
+  it('deve lançar NotFoundException quando prisma retorna null', async () => {
     prismaMock.wishlist.findUnique.mockResolvedValue(null);
 
-    const result = await mockService.findOne('id-inexistente');
-
-    expect(result).toBeNull();
+    await expect(mockService.findOne('id-inexistente')).rejects.toThrow(
+      NotFoundException,
+    );
   });
 
   it('não deve chamar prisma.wishlist.create durante o findOne', async () => {
