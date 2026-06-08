@@ -69,7 +69,7 @@ class InMemoryTradeProposalRepository {
   }): Promise<TradeProposalWithItems[]> {
     let result = Array.from(this.proposals.values());
     if (args.where?.tradeId) {
-      result = result.filter((p) => p.tradeId === args.where!.tradeId);
+      result = result.filter((p) => p.tradeId === args.where.tradeId);
     }
     return Promise.resolve(result.map((p) => ({ ...p })));
   }
@@ -122,19 +122,39 @@ describe('TradeProposalService', () => {
       tradeProposal: {
         create: jest
           .fn()
-          .mockImplementation((args) => inMemoryRepo.create(args)),
+          .mockImplementation((args: { data: CreateProposalData }) =>
+            inMemoryRepo.create(args),
+          ),
         findUnique: jest
           .fn()
-          .mockImplementation((args) => inMemoryRepo.findUnique(args)),
+          .mockImplementation(
+            (args: {
+              where: { id: string };
+              include?: { offeredCards: boolean };
+            }) => inMemoryRepo.findUnique(args),
+          ),
         findMany: jest
           .fn()
-          .mockImplementation((args) => inMemoryRepo.findMany(args)),
+          .mockImplementation(
+            (args: {
+              where?: { tradeId?: string };
+              include?: { offeredCards: boolean };
+            }) => inMemoryRepo.findMany(args),
+          ),
         update: jest
           .fn()
-          .mockImplementation((args) => inMemoryRepo.update(args)),
+          .mockImplementation(
+            (args: {
+              where: { id: string };
+              data: { status: ProposalStatus };
+              include?: { offeredCards: boolean };
+            }) => inMemoryRepo.update(args),
+          ),
         delete: jest
           .fn()
-          .mockImplementation((args) => inMemoryRepo.delete(args)),
+          .mockImplementation((args: { where: { id: string } }) =>
+            inMemoryRepo.delete(args),
+          ),
       },
     };
 
