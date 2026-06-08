@@ -27,11 +27,17 @@ export class WishlistService {
     });
   }
 
-  async findOne(id: string): Promise<WishlistWithItems | null> {
-    return this.prisma.wishlist.findUnique({
+  async findOne(id: string): Promise<WishlistWithItems> {
+    const wishlist = await this.prisma.wishlist.findUnique({
       where: { id },
       include: { items: true },
     });
+
+    if (!wishlist) {
+      throw new NotFoundException(`Wishlist com id "${id}" não encontrada`);
+    }
+
+    return wishlist;
   }
 
   async update(

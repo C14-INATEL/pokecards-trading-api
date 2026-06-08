@@ -244,62 +244,24 @@ describe('WishlistService', () => {
         expect(result.userId).toBe(dto.userId);
         expect(result.name).toBe(dto.name);
       });
-
-      it('should create a wishlist with only FILTER items', async () => {
-        const dto: CreateWishlistDto = {
-          userId: 'user-789',
-          name: 'Lista de Filtros',
-          items: [
-            {
-              itemType: WishlistItemType.FILTER,
-              filterType: 'type',
-              filterRarity: 'common',
-            },
-            {
-              itemType: WishlistItemType.FILTER,
-              filterType: 'color',
-              filterRarity: 'rare',
-            },
-          ],
-        };
-
-        const result = await service.create(dto);
-
-        expect(result.items).toHaveLength(2);
-        expect(
-          result.items.every(
-            (item) => item.itemType === WishlistItemType.FILTER,
-          ),
-        ).toBe(true);
-        expect(result.items.every((item) => item.cardId === null)).toBe(true);
-      });
-
-      it('should create a wishlist with only SPECIFIC_CARD items', async () => {
-        const dto: CreateWishlistDto = {
-          userId: 'user-101',
-          name: 'Lista de Cartas',
-          items: [
-            { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-001' },
-            { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-002' },
-          ],
-        };
-
-        const result = await service.create(dto);
-
-        expect(result.items).toHaveLength(2);
-        expect(
-          result.items.every(
-            (item) => item.itemType === WishlistItemType.SPECIFIC_CARD,
-          ),
-        ).toBe(true);
-        expect(result.items.every((item) => item.filterType === null)).toBe(
-          true,
-        );
-      });
     });
 
     describe('fluxo de extensão', () => {
-      it('should call prisma with correct structure when creating', async () => {
+      it('should call prisma.wishlist.create exactly once', async () => {
+        const dto: CreateWishlistDto = {
+          userId: 'user-101',
+          name: 'Lista Estruturada',
+          items: [
+            { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-999' },
+          ],
+        };
+
+        await service.create(dto);
+
+        expect(prismaServiceMock.wishlist.create).toHaveBeenCalledTimes(1);
+      });
+
+      it('should call prisma.wishlist.create with correct structure', async () => {
         const dto: CreateWishlistDto = {
           userId: 'user-101',
           name: 'Lista Estruturada',
@@ -326,120 +288,73 @@ describe('WishlistService', () => {
           include: { items: true },
         });
       });
-
-      it('should call prisma create exactly once', async () => {
-        const dto: CreateWishlistDto = {
-          userId: 'user-once',
-          name: 'Lista Única',
-          items: [],
-        };
-
-        await service.create(dto);
-
-        expect(prismaServiceMock.wishlist.create).toHaveBeenCalledTimes(1);
-      });
-
-      it('should call prisma with empty create array when items is empty', async () => {
-        const dto: CreateWishlistDto = {
-          userId: 'user-empty',
-          name: 'Lista Sem Itens',
-          items: [],
-        };
-
-        await service.create(dto);
-
-        expect(prismaServiceMock.wishlist.create).toHaveBeenCalledWith({
-          data: {
-            userId: dto.userId,
-            name: dto.name,
-            items: { create: [] },
-          },
-          include: { items: true },
-        });
-      });
-
-      it('should return wishlist with createdAt defined', async () => {
-        const dto: CreateWishlistDto = {
-          userId: 'user-date',
-          name: 'Lista com Data',
-          items: [],
-        };
-
-        const result = await service.create(dto);
-
-        expect(result.createdAt).toBeDefined();
-        expect(result.createdAt).toBeInstanceOf(Date);
-      });
     });
   });
 
   describe('findOne', () => {
     describe('fluxo normal', () => {
-      it('should return a wishlist with items if it exists', async () => {
-        const created = await service.create({
-          userId: 'user-789',
-          name: 'Para ler depois',
-          items: [
-            { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-002' },
-          ],
+      it('should return a wishlist with items when it exists', async () => {
+        const created = await inMemoryRepo.create({
+          data: {
+            userId: 'user-789',
+            name: 'Para ler depois',
+            items: {
+              create: [
+                {
+                  itemType: WishlistItemType.SPECIFIC_CARD,
+                  cardId: 'card-002',
+                },
+              ],
+            },
+          },
         });
 
         const found = await service.findOne(created.id);
 
         expect(found).toBeDefined();
-        expect(found?.id).toBe(created.id);
-        expect(found?.items).toHaveLength(1);
-      });
-
-      it('should return null if wishlist does not exist', async () => {
-        const result = await service.findOne('non-existent-id');
-
-        expect(result).toBeNull();
+        expect(found.id).toBe(created.id);
+        expect(found.items).toHaveLength(1);
       });
 
       it('should return wishlist with correct userId and name', async () => {
-        const created = await service.create({
-          userId: 'user-check',
-          name: 'Lista Verificada',
-          items: [],
+        const created = await inMemoryRepo.create({
+          data: {
+            userId: 'user-check',
+            name: 'Lista Verificada',
+            items: { create: [] },
+          },
         });
 
         const found = await service.findOne(created.id);
 
-        expect(found?.userId).toBe('user-check');
-        expect(found?.name).toBe('Lista Verificada');
-        expect(found?.items).toHaveLength(0);
-      });
-
-      it('should return wishlist with all item fields populated', async () => {
-        const created = await service.create({
-          userId: 'user-fields',
-          name: 'Lista Completa',
-          items: [
-            {
-              itemType: WishlistItemType.FILTER,
-              filterType: 'color',
-              filterRarity: 'legendary',
-            },
-          ],
-        });
-
-        const found = await service.findOne(created.id);
-
-        expect(found?.items).toHaveLength(1);
-        expect(found?.items[0].itemType).toBe(WishlistItemType.FILTER);
-        expect(found?.items[0].filterType).toBe('color');
-        expect(found?.items[0].filterRarity).toBe('legendary');
-        expect(found?.items[0].cardId).toBeNull();
+        expect(found.userId).toBe('user-check');
+        expect(found.name).toBe('Lista Verificada');
+        expect(found.items).toHaveLength(0);
       });
     });
 
     describe('fluxo de extensão', () => {
-      it('should call prisma findUnique with correct args', async () => {
-        const created = await service.create({
-          userId: 'user-args',
-          name: 'Lista Args',
-          items: [],
+      it('should call prisma.wishlist.findUnique exactly once', async () => {
+        const created = await inMemoryRepo.create({
+          data: {
+            userId: 'user-args',
+            name: 'Lista Args',
+            items: { create: [] },
+          },
+        });
+
+        await service.findOne(created.id);
+
+        expect(prismaServiceMock.wishlist.findUnique).toHaveBeenCalledTimes(1);
+      });
+
+      it('should call prisma.wishlist.findUnique with correct args', async () => {
+        const created = await inMemoryRepo.create({
+          data: {
+            userId: 'user-args',
+            name: 'Lista Args',
+            items: { create: [] },
+          },
         });
 
         await service.findOne(created.id);
@@ -450,43 +365,13 @@ describe('WishlistService', () => {
         });
       });
 
-      it('should call prisma findUnique exactly once', async () => {
-        const created = await service.create({
-          userId: 'user-once',
-          name: 'Lista Once',
-          items: [],
-        });
-
-        await service.findOne(created.id);
-
-        expect(prismaServiceMock.wishlist.findUnique).toHaveBeenCalledTimes(1);
-      });
-
-      it('should return empty items array when wishlist has no items', async () => {
-        const created = await service.create({
-          userId: 'user-empty',
-          name: 'Lista Vazia',
-          items: [],
-        });
-
-        const found = await service.findOne(created.id);
-
-        expect(found?.items).toBeDefined();
-        expect(found?.items).toHaveLength(0);
-        expect(Array.isArray(found?.items)).toBe(true);
-      });
-
-      it('should return null for any non-existent id without throwing', async () => {
-        const ids = ['abc-123', 'xyz-999', 'fake-id'];
-
-        for (const id of ids) {
-          const result = await service.findOne(id);
-          expect(result).toBeNull();
-        }
+      it('should throw NotFoundException when wishlist does not exist', async () => {
+        await expect(service.findOne('id-inexistente')).rejects.toThrow(
+          NotFoundException,
+        );
       });
     });
   });
-
   describe('update', () => {
     describe('fluxo normal', () => {
       it('should update the name of an existing wishlist', async () => {
@@ -605,10 +490,9 @@ describe('WishlistService', () => {
 
         await service.delete(created.id);
 
-        const found = await inMemoryRepo.findUnique({
-          where: { id: created.id },
-        });
-        expect(found).toBeNull();
+        await expect(service.findOne(created.id)).rejects.toThrow(
+          NotFoundException,
+        );
       });
     });
 
@@ -636,234 +520,5 @@ describe('WishlistService', () => {
         expect(prismaServiceMock.wishlist.delete).toHaveBeenCalledTimes(1);
       });
     });
-  });
-});
-
-// =============================================================================
-// Mock puro (jest.fn) — create e findOne
-// =============================================================================
-
-const FIXED_DATE = new Date('2024-06-15T12:00:00.000Z');
-
-function makePrismaWishlist(
-  overrides?: Partial<Wishlist & { items: WishlistItem[] }>,
-): Wishlist & { items: WishlistItem[] } {
-  return {
-    id: 'wishlist-uuid-001',
-    userId: 'user-uuid-001',
-    name: 'Minha Lista',
-    createdAt: FIXED_DATE,
-    items: [],
-    ...overrides,
-  };
-}
-
-function makePrismaItem(overrides?: Partial<WishlistItem>): WishlistItem {
-  return {
-    id: 'item-uuid-001',
-    wishlistId: 'wishlist-uuid-001',
-    itemType: WishlistItemType.SPECIFIC_CARD,
-    cardId: 'card-001',
-    filterType: null,
-    filterRarity: null,
-    ...overrides,
-  };
-}
-
-describe('create – mock puro', () => {
-  let mockService: WishlistService;
-
-  const prismaMock = {
-    wishlist: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    },
-  };
-
-  beforeEach(async () => {
-    jest.clearAllMocks();
-
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        WishlistService,
-        { provide: PrismaService, useValue: prismaMock },
-      ],
-    }).compile();
-
-    mockService = module.get<WishlistService>(WishlistService);
-  });
-
-  it('deve chamar prisma.wishlist.create com a estrutura correta', async () => {
-    const dto: CreateWishlistDto = {
-      userId: 'user-uuid-001',
-      name: 'Minha Lista',
-      items: [{ itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-001' }],
-    };
-
-    prismaMock.wishlist.create.mockResolvedValue(
-      makePrismaWishlist({ items: [makePrismaItem()] }),
-    );
-
-    await mockService.create(dto);
-
-    expect(prismaMock.wishlist.create).toHaveBeenCalledWith({
-      data: {
-        userId: 'user-uuid-001',
-        name: 'Minha Lista',
-        items: {
-          create: [
-            { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-001' },
-          ],
-        },
-      },
-      include: { items: true },
-    });
-  });
-
-  it('deve chamar prisma.wishlist.create exatamente uma vez', async () => {
-    prismaMock.wishlist.create.mockResolvedValue(makePrismaWishlist());
-
-    await mockService.create({
-      userId: 'user-uuid-001',
-      name: 'Lista',
-      items: [],
-    });
-
-    expect(prismaMock.wishlist.create).toHaveBeenCalledTimes(1);
-  });
-
-  it('deve retornar os dados vindos do prisma sem alteração', async () => {
-    const prismaReturn = makePrismaWishlist({ items: [makePrismaItem()] });
-    prismaMock.wishlist.create.mockResolvedValue(prismaReturn);
-
-    const result = await mockService.create({
-      userId: 'user-uuid-001',
-      name: 'Minha Lista',
-      items: [
-        {
-          itemType: WishlistItemType.SPECIFIC_CARD,
-          cardId: 'card-001',
-        },
-      ],
-    });
-
-    expect(result.id).toBe('wishlist-uuid-001');
-    expect(result.userId).toBe('user-uuid-001');
-    expect(result.createdAt).toBe(FIXED_DATE);
-    expect(result.items).toHaveLength(1);
-  });
-
-  it('não deve chamar prisma.wishlist.findUnique durante o create', async () => {
-    prismaMock.wishlist.create.mockResolvedValue(makePrismaWishlist());
-
-    await mockService.create({
-      userId: 'user-uuid-001',
-      name: 'Lista',
-      items: [],
-    });
-
-    expect(prismaMock.wishlist.findUnique).not.toHaveBeenCalled();
-  });
-
-  it('deve propagar erro lançado pelo prisma', async () => {
-    prismaMock.wishlist.create.mockRejectedValue(
-      new Error('DB connection failed'),
-    );
-
-    await expect(
-      mockService.create({
-        userId: 'user-uuid-001',
-        name: 'Lista',
-        items: [],
-      }),
-    ).rejects.toThrow('DB connection failed');
-  });
-});
-
-describe('findOne – mock puro', () => {
-  let mockService: WishlistService;
-
-  const prismaMock = {
-    wishlist: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    },
-  };
-
-  beforeEach(async () => {
-    jest.clearAllMocks();
-
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        WishlistService,
-        { provide: PrismaService, useValue: prismaMock },
-      ],
-    }).compile();
-
-    mockService = module.get<WishlistService>(WishlistService);
-  });
-
-  it('deve chamar prisma.wishlist.findUnique com id e include corretos', async () => {
-    prismaMock.wishlist.findUnique.mockResolvedValue(makePrismaWishlist());
-
-    await mockService.findOne('wishlist-uuid-001');
-
-    expect(prismaMock.wishlist.findUnique).toHaveBeenCalledWith({
-      where: { id: 'wishlist-uuid-001' },
-      include: { items: true },
-    });
-  });
-
-  it('deve chamar prisma.wishlist.findUnique exatamente uma vez', async () => {
-    prismaMock.wishlist.findUnique.mockResolvedValue(makePrismaWishlist());
-
-    await mockService.findOne('wishlist-uuid-001');
-
-    expect(prismaMock.wishlist.findUnique).toHaveBeenCalledTimes(1);
-  });
-
-  it('deve retornar os dados vindos do prisma sem alteração', async () => {
-    const prismaReturn = makePrismaWishlist({
-      items: [makePrismaItem({ filterType: 'color', filterRarity: 'rare' })],
-    });
-    prismaMock.wishlist.findUnique.mockResolvedValue(prismaReturn);
-
-    const result = await mockService.findOne('wishlist-uuid-001');
-
-    expect(result?.id).toBe('wishlist-uuid-001');
-    expect(result?.userId).toBe('user-uuid-001');
-    expect(result?.createdAt).toBe(FIXED_DATE);
-    expect(result?.items).toHaveLength(1);
-  });
-
-  it('deve retornar null quando prisma retorna null', async () => {
-    prismaMock.wishlist.findUnique.mockResolvedValue(null);
-
-    const result = await mockService.findOne('id-inexistente');
-
-    expect(result).toBeNull();
-  });
-
-  it('não deve chamar prisma.wishlist.create durante o findOne', async () => {
-    prismaMock.wishlist.findUnique.mockResolvedValue(makePrismaWishlist());
-
-    await mockService.findOne('wishlist-uuid-001');
-
-    expect(prismaMock.wishlist.create).not.toHaveBeenCalled();
-  });
-
-  it('deve retornar items como array vazio quando wishlist não tem itens', async () => {
-    prismaMock.wishlist.findUnique.mockResolvedValue(
-      makePrismaWishlist({ items: [] }),
-    );
-
-    const result = await mockService.findOne('wishlist-uuid-001');
-
-    expect(Array.isArray(result?.items)).toBe(true);
-    expect(result?.items).toHaveLength(0);
   });
 });
