@@ -400,10 +400,9 @@ describe('TradeProposalService', () => {
           proposerId: 'user-u-001',
           offeredCards: [{ cardId: 'card-u-001', quantity: 1 }],
         });
-        const result = await service.update(
-          created.id,
-          ProposalStatus.ACCEPTED,
-        );
+        const result = await service.update(created.id, {
+          status: ProposalStatus.ACCEPTED,
+        });
         expect(result.status).toBe(ProposalStatus.ACCEPTED);
       });
 
@@ -413,10 +412,9 @@ describe('TradeProposalService', () => {
           proposerId: 'user-u-002',
           offeredCards: [],
         });
-        const result = await service.update(
-          created.id,
-          ProposalStatus.REJECTED,
-        );
+        const result = await service.update(created.id, {
+          status: ProposalStatus.REJECTED,
+        });
         expect(result.status).toBe(ProposalStatus.REJECTED);
       });
     });
@@ -424,13 +422,13 @@ describe('TradeProposalService', () => {
     describe('fluxo de extensão', () => {
       it('should throw NotFoundException when proposal does not exist', async () => {
         await expect(
-          service.update('id-inexistente', ProposalStatus.ACCEPTED),
+          service.update('id-inexistente', { status: ProposalStatus.ACCEPTED }),
         ).rejects.toThrow(NotFoundException);
       });
 
       it('should not call prisma.tradeProposal.update when proposal does not exist', async () => {
         await service
-          .update('id-inexistente', ProposalStatus.ACCEPTED)
+          .update('id-inexistente', { status: ProposalStatus.ACCEPTED })
           .catch(() => {});
         expect(prismaServiceMock.tradeProposal.update).not.toHaveBeenCalled();
       });
@@ -442,10 +440,10 @@ describe('TradeProposalService', () => {
           offeredCards: [],
         });
 
-        await service.update(created.id, ProposalStatus.ACCEPTED);
+        await service.update(created.id, { status: ProposalStatus.ACCEPTED });
 
         await expect(
-          service.update(created.id, ProposalStatus.ACCEPTED),
+          service.update(created.id, { status: ProposalStatus.ACCEPTED }),
         ).rejects.toThrow(ConflictException);
       });
     });

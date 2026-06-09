@@ -23,10 +23,10 @@ import {
 } from '@nestjs/swagger';
 import { TradeProposalService } from './trade-proposal.service';
 import { CreateTradeProposalDto } from './dto/create-trade-proposal.dto';
+import { UpdateTradeProposalDto } from './dto/update-trade-proposal.dto';
 import { TradeProposalResponseDto } from './dto/trade-proposal-response.dto';
 import { ValidationErrorResponseDto } from '../common/dto/validation-error-response.dto';
 import { NotFoundResponseDto } from '../common/dto/not-found-response.dto';
-import { ProposalStatus } from '@prisma/client';
 
 @ApiTags('Trade Proposals')
 @Controller('trade-proposals')
@@ -76,12 +76,16 @@ export class TradeProposalController {
     return this.tradeProposalService.findOne(id);
   }
 
-  @Patch(':id/accept')
-  @ApiOperation({ summary: 'Aceitar proposta' })
+  @Patch(':id')
+  @ApiOperation({ summary: 'Atualizar status da proposta' })
   @ApiParam({ name: 'id', schema: { type: 'string', format: 'uuid' } })
   @ApiOkResponse({
-    description: 'Proposta aceita.',
+    description: 'Proposta atualizada.',
     type: TradeProposalResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Payload inválido.',
+    type: ValidationErrorResponseDto,
   })
   @ApiNotFoundResponse({
     description: 'Proposta não encontrada.',
@@ -91,46 +95,11 @@ export class TradeProposalController {
     description: 'Proposta não está com status PENDING.',
     type: NotFoundResponseDto,
   })
-  accept(@Param('id') id: string): Promise<TradeProposalResponseDto> {
-    return this.tradeProposalService.update(id, ProposalStatus.ACCEPTED);
-  }
-
-  @Patch(':id/reject')
-  @ApiOperation({ summary: 'Rejeitar proposta' })
-  @ApiParam({ name: 'id', schema: { type: 'string', format: 'uuid' } })
-  @ApiOkResponse({
-    description: 'Proposta rejeitada.',
-    type: TradeProposalResponseDto,
-  })
-  @ApiNotFoundResponse({
-    description: 'Proposta não encontrada.',
-    type: NotFoundResponseDto,
-  })
-  @ApiConflictResponse({
-    description: 'Proposta não está com status PENDING.',
-    type: NotFoundResponseDto,
-  })
-  reject(@Param('id') id: string): Promise<TradeProposalResponseDto> {
-    return this.tradeProposalService.update(id, ProposalStatus.REJECTED);
-  }
-
-  @Patch(':id/cancel')
-  @ApiOperation({ summary: 'Cancelar proposta' })
-  @ApiParam({ name: 'id', schema: { type: 'string', format: 'uuid' } })
-  @ApiOkResponse({
-    description: 'Proposta cancelada.',
-    type: TradeProposalResponseDto,
-  })
-  @ApiNotFoundResponse({
-    description: 'Proposta não encontrada.',
-    type: NotFoundResponseDto,
-  })
-  @ApiConflictResponse({
-    description: 'Proposta não está com status PENDING.',
-    type: NotFoundResponseDto,
-  })
-  cancel(@Param('id') id: string): Promise<TradeProposalResponseDto> {
-    return this.tradeProposalService.update(id, ProposalStatus.CANCELLED);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateTradeProposalDto,
+  ): Promise<TradeProposalResponseDto> {
+    return this.tradeProposalService.update(id, dto);
   }
 
   @Delete(':id')
