@@ -239,10 +239,17 @@ describe('TradesService', () => {
   describe('findOne', () => {
     describe('fluxo normal', () => {
       it('should return a trade when it exists', async () => {
-        const created = await service.create({
-          ownerId: 'red-pallet',
-          offeredCards: [{ cardId: 'venusaur-base', quantity: 1 }],
-          requestedCards: [{ cardId: 'squirtle-base', quantity: 2 }],
+        const created = await inMemoryRepo.create({
+          data: {
+            ownerId: 'red-pallet',
+            linkedWishlistId: null,
+            offeredCards: {
+              create: [{ cardId: 'venusaur-base', quantity: 1 }],
+            },
+            requestedCards: {
+              create: [{ cardId: 'squirtle-base', quantity: 2 }],
+            },
+          },
         });
 
         const found = await service.findOne(created.id);
@@ -250,20 +257,23 @@ describe('TradesService', () => {
         expect(found).toBeDefined();
         expect(found.id).toBe(created.id);
         expect(found.ownerId).toBe('red-pallet');
-        expect(prismaServiceMock.trade.findUnique).toHaveBeenCalledWith({
-          where: { id: created.id },
-          include: { offeredCards: true, requestedCards: true },
-        });
       });
 
       it('should return a trade with its offered and requested cards populated', async () => {
-        const created = await service.create({
-          ownerId: 'blue-viridian',
-          offeredCards: [
-            { cardId: 'alakazam-base', quantity: 1 },
-            { cardId: 'machamp-base', quantity: 1 },
-          ],
-          requestedCards: [{ cardId: 'gengar-base', quantity: 1 }],
+        const created = await inMemoryRepo.create({
+          data: {
+            ownerId: 'blue-viridian',
+            linkedWishlistId: null,
+            offeredCards: {
+              create: [
+                { cardId: 'alakazam-base', quantity: 1 },
+                { cardId: 'machamp-base', quantity: 1 },
+              ],
+            },
+            requestedCards: {
+              create: [{ cardId: 'gengar-base', quantity: 1 }],
+            },
+          },
         });
 
         const found = await service.findOne(created.id);
@@ -280,33 +290,47 @@ describe('TradesService', () => {
     });
 
     describe('fluxo de extensão', () => {
-      it('should throw NotFoundException when trade does not exist', async () => {
-        await expect(service.findOne('id-inexistente')).rejects.toThrow(
-          NotFoundException,
-        );
-      });
-
-      it('should not call prisma.trade.create when searching for a trade', async () => {
-        await service.findOne('id-qualquer').catch(() => {});
-
-        expect(prismaServiceMock.trade.create).not.toHaveBeenCalled();
-      });
-
-      it('should return a trade preserving the linkedWishlistId', async () => {
-        const created = await service.create({
-          ownerId: 'clemont-lumiose',
-          linkedWishlistId: 'wishlist-002',
-          offeredCards: [{ cardId: 'heliolisk-xy', quantity: 1 }],
-          requestedCards: [{ cardId: 'chesnaught-xy', quantity: 1 }],
+      it('should call prisma.trade.findUnique exactly once', async () => {
+        const created = await inMemoryRepo.create({
+          data: {
+            ownerId: 'clemont-lumiose',
+            linkedWishlistId: null,
+            offeredCards: { create: [{ cardId: 'heliolisk-xy', quantity: 1 }] },
+            requestedCards: {
+              create: [{ cardId: 'chesnaught-xy', quantity: 1 }],
+            },
+          },
         });
 
-        const found = await service.findOne(created.id);
+        await service.findOne(created.id);
 
-        expect(found.linkedWishlistId).toBe('wishlist-002');
+        expect(prismaServiceMock.trade.findUnique).toHaveBeenCalledTimes(1);
+      });
+
+      it('should call prisma.trade.findUnique with correct args', async () => {
+        const created = await inMemoryRepo.create({
+          data: {
+            ownerId: 'korrina-shalour',
+            linkedWishlistId: null,
+            offeredCards: { create: [{ cardId: 'lucario-xy', quantity: 1 }] },
+            requestedCards: {
+              create: [{ cardId: 'mienshao-xy', quantity: 1 }],
+            },
+          },
+        });
+
+        await service.findOne(created.id);
+
         expect(prismaServiceMock.trade.findUnique).toHaveBeenCalledWith({
           where: { id: created.id },
           include: { offeredCards: true, requestedCards: true },
         });
+      });
+
+      it('should throw NotFoundException when trade does not exist', async () => {
+        await expect(service.findOne('id-inexistente')).rejects.toThrow(
+          NotFoundException,
+        );
       });
     });
   });

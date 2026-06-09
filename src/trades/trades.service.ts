@@ -37,7 +37,7 @@ export class TradesService {
     });
 
     if (!trade) {
-      throw new NotFoundException(`Trade com id ${id} não encontrado.`);
+      throw new NotFoundException(`Trade com id "${id}" não encontrado`);
     }
 
     return trade;
