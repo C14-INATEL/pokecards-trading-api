@@ -1,85 +1,57 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import {
+  WishlistRepository,
+  WishlistWithItems,
+} from './repositories/wishlist.repository';
+import { WishlistEntity } from './domain/wishlist.entity';
 import { CreateWishlistDto } from './dto/create-wishlist.dto';
 import { UpdateWishlistDto } from './dto/update-wishlist.dto';
-import { Wishlist, WishlistItem } from '@prisma/client';
-
-type WishlistWithItems = Wishlist & { items: WishlistItem[] };
 
 @Injectable()
 export class WishlistService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly repository: WishlistRepository) {}
 
   async create(
     createWishlistDto: CreateWishlistDto,
   ): Promise<WishlistWithItems> {
-    const { userId, name, items } = createWishlistDto;
-
-    return this.prisma.wishlist.create({
-      data: {
-        userId,
-        name,
-        items: {
-          create: items ?? [],
-        },
-      },
-      include: { items: true },
-    });
+    const wishlist = WishlistEntity.create(
+      createWishlistDto.userId,
+      createWishlistDto.name,
+    );
+    return this.repository.save(wishlist, createWishlistDto.items);
   }
 
   async findOne(id: string): Promise<WishlistWithItems> {
-    const wishlist = await this.prisma.wishlist.findUnique({
-      where: { id },
-      include: { items: true },
-    });
-
+    const wishlist = await this.repository.findById(id);
     if (!wishlist) {
       throw new NotFoundException(`Wishlist com id "${id}" não encontrada`);
     }
-
     return wishlist;
   }
 
   async findAll(): Promise<WishlistWithItems[]> {
-    return this.prisma.wishlist.findMany({
-      include: { items: true },
-    });
+    return this.repository.findAll();
   }
 
   async update(
     id: string,
     updateWishlistDto: UpdateWishlistDto,
   ): Promise<WishlistWithItems> {
-    const existing = await this.prisma.wishlist.findUnique({ where: { id } });
-
+    const existing = await this.repository.findById(id);
     if (!existing) {
       throw new NotFoundException(`Wishlist com id "${id}" não encontrada`);
     }
-
-    const { name, items } = updateWishlistDto;
-
-    return this.prisma.wishlist.update({
-      where: { id },
-      data: {
-        ...(name !== undefined && { name }),
-        ...(items !== undefined && {
-          items: {
-            deleteMany: {},
-            create: items,
-          },
-        }),
-      },
-      include: { items: true },
+    return this.repository.update(id, {
+      name: updateWishlistDto.name,
+      items: updateWishlistDto.items,
     });
   }
 
   async delete(id: string): Promise<void> {
-    const existing = await this.prisma.wishlist.findUnique({ where: { id } });
-
+    const existing = await this.repository.findById(id);
     if (!existing) {
       throw new NotFoundException(`Wishlist com id "${id}" não encontrada`);
     }
-
-    await this.prisma.wishlist.delete({ where: { id } });
+    await this.repository.delete(id);
   }
 }

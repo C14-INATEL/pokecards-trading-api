@@ -1,224 +1,97 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { WishlistService } from './wishlist.service';
-import { PrismaService } from '../prisma/prisma.service';
+import {
+  WishlistRepository,
+  WishlistWithItems,
+  WishlistItemInput,
+} from './repositories/wishlist.repository';
+import { WishlistEntity } from './domain/wishlist.entity';
 import { CreateWishlistDto } from './dto/create-wishlist.dto';
 import { UpdateWishlistDto } from './dto/update-wishlist.dto';
-import { Wishlist, WishlistItem, WishlistItemType } from '@prisma/client';
+import { WishlistItemType } from '@prisma/client';
 
-type WishlistCreateData = {
-  userId: string;
-  name: string;
-  items?: {
-    create: Array<{
-      itemType: WishlistItemType;
-      cardId?: string | null;
-      filterType?: string | null;
-      filterRarity?: string | null;
-    }>;
-  };
-};
+class InMemoryWishlistRepository extends WishlistRepository {
+  private wishlists: Map<string, WishlistWithItems> = new Map();
 
-type WishlistUpdateData = {
-  name?: string;
-  items?: {
-    deleteMany: object;
-    create: Array<{
-      itemType: WishlistItemType;
-      cardId?: string | null;
-      filterType?: string | null;
-      filterRarity?: string | null;
-    }>;
-  };
-};
-
-class InMemoryWishlistRepository {
-  private wishlists: Map<string, Wishlist & { items: WishlistItem[] }> =
-    new Map();
-  private items: Map<string, WishlistItem> = new Map();
-
-  create(args: {
-    data: WishlistCreateData;
-  }): Promise<Wishlist & { items: WishlistItem[] }> {
-    const { data } = args;
+  save(
+    entity: WishlistEntity,
+    items?: WishlistItemInput[],
+  ): Promise<WishlistWithItems> {
     const id =
       this.wishlists.size === 0
         ? 'mock-uuid'
         : `mock-uuid-${this.wishlists.size + 1}`;
-    const wishlist: Wishlist & { items: WishlistItem[] } = {
+    const wishlist: WishlistWithItems = {
       id,
-      userId: data.userId,
-      name: data.name,
+      userId: entity.userId,
+      name: entity.name,
       createdAt: new Date(),
-      items: [],
+      items: (items ?? []).map((item, idx) => ({
+        id: `item-${idx + 1}`,
+        wishlistId: id,
+        itemType: item.itemType,
+        cardId: item.cardId ?? null,
+        filterType: item.filterType ?? null,
+        filterRarity: item.filterRarity ?? null,
+      })),
     };
-
     this.wishlists.set(id, wishlist);
-
-    if (data.items?.create) {
-      for (const itemData of data.items.create) {
-        const itemId = `item-${this.items.size + 1}`;
-        const item: WishlistItem = {
-          id: itemId,
-          wishlistId: id,
-          itemType: itemData.itemType,
-          cardId: itemData.cardId ?? null,
-          filterType: itemData.filterType ?? null,
-          filterRarity: itemData.filterRarity ?? null,
-        };
-        this.items.set(itemId, item);
-        wishlist.items.push(item);
-      }
-    }
-
     return Promise.resolve(wishlist);
   }
 
-  findUnique(args: {
-    where: { id: string };
-    include?: { items: boolean };
-  }): Promise<(Wishlist & { items?: WishlistItem[] }) | null> {
-    const wishlist = this.wishlists.get(args.where.id);
-    if (!wishlist) return Promise.resolve(null);
-
-    const result = { ...wishlist };
-    if (args.include?.items) {
-      result.items = Array.from(this.items.values()).filter(
-        (item) => item.wishlistId === args.where.id,
-      );
-    }
-    return Promise.resolve(result ?? null);
+  findById(id: string): Promise<WishlistWithItems | null> {
+    return Promise.resolve(this.wishlists.get(id) ?? null);
   }
 
-  findMany(args: {
-    include?: { items: boolean };
-  }): Promise<Array<Wishlist & { items?: WishlistItem[] }>> {
-    const result = Array.from(this.wishlists.values()).map((wishlist) => {
-      const wishlistResult = { ...wishlist };
-      if (args.include?.items) {
-        wishlistResult.items = Array.from(this.items.values()).filter(
-          (item) => item.wishlistId === wishlist.id,
-        );
-      }
-      return wishlistResult;
-    });
-
-    return Promise.resolve(result);
+  findAll(): Promise<WishlistWithItems[]> {
+    return Promise.resolve(Array.from(this.wishlists.values()));
   }
-  update(args: {
-    where: { id: string };
-    data: WishlistUpdateData;
-    include?: { items: boolean };
-  }): Promise<Wishlist & { items: WishlistItem[] }> {
-    const wishlist = this.wishlists.get(args.where.id);
+
+  update(
+    id: string,
+    data: { name?: string; items?: WishlistItemInput[] },
+  ): Promise<WishlistWithItems> {
+    const wishlist = this.wishlists.get(id);
     if (!wishlist) return Promise.resolve(null as any);
 
-    if (args.data.name !== undefined) {
-      wishlist.name = args.data.name;
+    if (data.name !== undefined) wishlist.name = data.name;
+    if (data.items !== undefined) {
+      wishlist.items = data.items.map((item, idx) => ({
+        id: `item-${idx + 1}`,
+        wishlistId: id,
+        itemType: item.itemType,
+        cardId: item.cardId ?? null,
+        filterType: item.filterType ?? null,
+        filterRarity: item.filterRarity ?? null,
+      }));
     }
 
-    if (args.data.items !== undefined) {
-      for (const [key, item] of this.items.entries()) {
-        if (item.wishlistId === args.where.id) {
-          this.items.delete(key);
-        }
-      }
-      wishlist.items = [];
-
-      for (const itemData of args.data.items.create) {
-        const itemId = `item-${this.items.size + 1}`;
-        const item: WishlistItem = {
-          id: itemId,
-          wishlistId: args.where.id,
-          itemType: itemData.itemType,
-          cardId: itemData.cardId ?? null,
-          filterType: itemData.filterType ?? null,
-          filterRarity: itemData.filterRarity ?? null,
-        };
-        this.items.set(itemId, item);
-        wishlist.items.push(item);
-      }
-    }
-
-    this.wishlists.set(args.where.id, wishlist);
+    this.wishlists.set(id, wishlist);
     return Promise.resolve({ ...wishlist });
   }
 
-  delete(args: { where: { id: string } }): Promise<Wishlist> {
-    const wishlist = this.wishlists.get(args.where.id);
-    if (!wishlist) return Promise.resolve(null as any);
-
-    for (const [key, item] of this.items.entries()) {
-      if (item.wishlistId === args.where.id) {
-        this.items.delete(key);
-      }
-    }
-
-    this.wishlists.delete(args.where.id);
-    return Promise.resolve(wishlist);
+  delete(id: string): Promise<void> {
+    this.wishlists.delete(id);
+    return Promise.resolve();
   }
 
   clear(): void {
     this.wishlists.clear();
-    this.items.clear();
   }
 }
 
 describe('WishlistService', () => {
   let service: WishlistService;
   let inMemoryRepo: InMemoryWishlistRepository;
-  let prismaServiceMock: {
-    wishlist: {
-      create: jest.Mock;
-      findUnique: jest.Mock;
-      findMany: jest.Mock;
-      update: jest.Mock;
-      delete: jest.Mock;
-    };
-  };
 
   beforeEach(async () => {
     inMemoryRepo = new InMemoryWishlistRepository();
 
-    prismaServiceMock = {
-      wishlist: {
-        create: jest
-          .fn()
-          .mockImplementation((args: { data: WishlistCreateData }) =>
-            inMemoryRepo.create(args),
-          ),
-        findUnique: jest
-          .fn()
-          .mockImplementation(
-            (args: { where: { id: string }; include?: { items: boolean } }) =>
-              inMemoryRepo.findUnique(args),
-          ),
-        findMany: jest
-          .fn()
-          .mockImplementation((args: { include?: { items: boolean } }) =>
-            inMemoryRepo.findMany(args),
-          ),
-        update: jest
-          .fn()
-          .mockImplementation(
-            (args: {
-              where: { id: string };
-              data: WishlistUpdateData;
-              include?: { items: boolean };
-            }) => inMemoryRepo.update(args),
-          ),
-        delete: jest
-          .fn()
-          .mockImplementation((args: { where: { id: string } }) =>
-            inMemoryRepo.delete(args),
-          ),
-      },
-    };
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WishlistService,
-        { provide: PrismaService, useValue: prismaServiceMock },
+        { provide: WishlistRepository, useValue: inMemoryRepo },
       ],
     }).compile();
 
@@ -270,7 +143,8 @@ describe('WishlistService', () => {
     });
 
     describe('fluxo de extensão', () => {
-      it('should call prisma.wishlist.create exactly once', async () => {
+      it('should call repository.save exactly once', async () => {
+        const saveSpy = jest.spyOn(inMemoryRepo, 'save');
         const dto: CreateWishlistDto = {
           userId: 'user-101',
           name: 'Lista Estruturada',
@@ -281,10 +155,11 @@ describe('WishlistService', () => {
 
         await service.create(dto);
 
-        expect(prismaServiceMock.wishlist.create).toHaveBeenCalledTimes(1);
+        expect(saveSpy).toHaveBeenCalledTimes(1);
       });
 
-      it('should call prisma.wishlist.create with correct structure', async () => {
+      it('should call repository.save with entity built from dto', async () => {
+        const saveSpy = jest.spyOn(inMemoryRepo, 'save');
         const dto: CreateWishlistDto = {
           userId: 'user-101',
           name: 'Lista Estruturada',
@@ -295,21 +170,10 @@ describe('WishlistService', () => {
 
         await service.create(dto);
 
-        expect(prismaServiceMock.wishlist.create).toHaveBeenCalledWith({
-          data: {
-            userId: dto.userId,
-            name: dto.name,
-            items: {
-              create: [
-                {
-                  itemType: WishlistItemType.SPECIFIC_CARD,
-                  cardId: 'card-999',
-                },
-              ],
-            },
-          },
-          include: { items: true },
-        });
+        expect(saveSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ userId: dto.userId, name: dto.name }),
+          dto.items,
+        );
       });
     });
   });
@@ -317,20 +181,10 @@ describe('WishlistService', () => {
   describe('findOne', () => {
     describe('fluxo normal', () => {
       it('should return a wishlist with items when it exists', async () => {
-        const created = await inMemoryRepo.create({
-          data: {
-            userId: 'user-789',
-            name: 'Para ler depois',
-            items: {
-              create: [
-                {
-                  itemType: WishlistItemType.SPECIFIC_CARD,
-                  cardId: 'card-002',
-                },
-              ],
-            },
-          },
-        });
+        const entity = WishlistEntity.create('user-789', 'Para ler depois');
+        const created = await inMemoryRepo.save(entity, [
+          { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-002' },
+        ]);
 
         const found = await service.findOne(created.id);
 
@@ -340,13 +194,8 @@ describe('WishlistService', () => {
       });
 
       it('should return wishlist with correct userId and name', async () => {
-        const created = await inMemoryRepo.create({
-          data: {
-            userId: 'user-check',
-            name: 'Lista Verificada',
-            items: { create: [] },
-          },
-        });
+        const entity = WishlistEntity.create('user-check', 'Lista Verificada');
+        const created = await inMemoryRepo.save(entity, []);
 
         const found = await service.findOne(created.id);
 
@@ -357,35 +206,24 @@ describe('WishlistService', () => {
     });
 
     describe('fluxo de extensão', () => {
-      it('should call prisma.wishlist.findUnique exactly once', async () => {
-        const created = await inMemoryRepo.create({
-          data: {
-            userId: 'user-args',
-            name: 'Lista Args',
-            items: { create: [] },
-          },
-        });
+      it('should call repository.findById exactly once', async () => {
+        const findByIdSpy = jest.spyOn(inMemoryRepo, 'findById');
+        const entity = WishlistEntity.create('user-args', 'Lista Args');
+        const created = await inMemoryRepo.save(entity, []);
 
         await service.findOne(created.id);
 
-        expect(prismaServiceMock.wishlist.findUnique).toHaveBeenCalledTimes(1);
+        expect(findByIdSpy).toHaveBeenCalledTimes(1);
       });
 
-      it('should call prisma.wishlist.findUnique with correct args', async () => {
-        const created = await inMemoryRepo.create({
-          data: {
-            userId: 'user-args',
-            name: 'Lista Args',
-            items: { create: [] },
-          },
-        });
+      it('should call repository.findById with correct id', async () => {
+        const findByIdSpy = jest.spyOn(inMemoryRepo, 'findById');
+        const entity = WishlistEntity.create('user-args', 'Lista Args');
+        const created = await inMemoryRepo.save(entity, []);
 
         await service.findOne(created.id);
 
-        expect(prismaServiceMock.wishlist.findUnique).toHaveBeenCalledWith({
-          where: { id: created.id },
-          include: { items: true },
-        });
+        expect(findByIdSpy).toHaveBeenCalledWith(created.id);
       });
 
       it('should throw NotFoundException when wishlist does not exist', async () => {
@@ -425,13 +263,12 @@ describe('WishlistService', () => {
     });
 
     describe('fluxo de extensão', () => {
-      it('should call prisma.wishlist.findMany with items included', async () => {
+      it('should call repository.findAll exactly once', async () => {
+        const findAllSpy = jest.spyOn(inMemoryRepo, 'findAll');
+
         await service.findAll();
 
-        expect(prismaServiceMock.wishlist.findMany).toHaveBeenCalledWith({
-          include: { items: true },
-        });
-        expect(prismaServiceMock.wishlist.findMany).toHaveBeenCalledTimes(1);
+        expect(findAllSpy).toHaveBeenCalledTimes(1);
       });
     });
   });
@@ -450,11 +287,6 @@ describe('WishlistService', () => {
 
         expect(result.name).toBe('Nome Novo');
         expect(result.id).toBe(created.id);
-        expect(prismaServiceMock.wishlist.update).toHaveBeenCalledWith({
-          where: { id: created.id },
-          data: { name: 'Nome Novo' },
-          include: { items: true },
-        });
       });
 
       it('should replace all items when items are provided in update', async () => {
@@ -482,7 +314,8 @@ describe('WishlistService', () => {
     });
 
     describe('fluxo de extensão', () => {
-      it('should call prisma.update with correct structure', async () => {
+      it('should call repository.update with correct args', async () => {
+        const updateSpy = jest.spyOn(inMemoryRepo, 'update');
         const created = await service.create({
           userId: 'user-upd-3',
           name: 'Lista Check',
@@ -498,32 +331,23 @@ describe('WishlistService', () => {
 
         await service.update(created.id, dto);
 
-        expect(prismaServiceMock.wishlist.update).toHaveBeenCalledWith({
-          where: { id: created.id },
-          data: {
-            name: 'Nome Atualizado',
-            items: {
-              deleteMany: {},
-              create: [
-                {
-                  itemType: WishlistItemType.SPECIFIC_CARD,
-                  cardId: 'card-001',
-                },
-              ],
-            },
-          },
-          include: { items: true },
+        expect(updateSpy).toHaveBeenCalledWith(created.id, {
+          name: 'Nome Atualizado',
+          items: [
+            { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-001' },
+          ],
         });
       });
 
       it('should throw NotFoundException when updating a non-existent wishlist', async () => {
+        const updateSpy = jest.spyOn(inMemoryRepo, 'update');
         const dto: UpdateWishlistDto = { name: 'Qualquer Nome' };
 
         await expect(service.update('id-inexistente', dto)).rejects.toThrow(
           NotFoundException,
         );
 
-        expect(prismaServiceMock.wishlist.update).not.toHaveBeenCalled();
+        expect(updateSpy).not.toHaveBeenCalled();
       });
     });
   });
@@ -538,9 +362,6 @@ describe('WishlistService', () => {
         });
 
         await expect(service.delete(created.id)).resolves.toBeUndefined();
-        expect(prismaServiceMock.wishlist.delete).toHaveBeenCalledWith({
-          where: { id: created.id },
-        });
       });
 
       it('should make the wishlist unreachable after deletion', async () => {
@@ -562,14 +383,17 @@ describe('WishlistService', () => {
 
     describe('fluxo de extensão', () => {
       it('should throw NotFoundException when deleting a non-existent wishlist', async () => {
+        const deleteSpy = jest.spyOn(inMemoryRepo, 'delete');
+
         await expect(service.delete('id-inexistente')).rejects.toThrow(
           NotFoundException,
         );
 
-        expect(prismaServiceMock.wishlist.delete).not.toHaveBeenCalled();
+        expect(deleteSpy).not.toHaveBeenCalled();
       });
 
-      it('should call prisma.delete with correct id', async () => {
+      it('should call repository.delete with correct id', async () => {
+        const deleteSpy = jest.spyOn(inMemoryRepo, 'delete');
         const created = await service.create({
           userId: 'user-del-3',
           name: 'Lista Delete Check',
@@ -578,10 +402,8 @@ describe('WishlistService', () => {
 
         await service.delete(created.id);
 
-        expect(prismaServiceMock.wishlist.delete).toHaveBeenCalledWith({
-          where: { id: created.id },
-        });
-        expect(prismaServiceMock.wishlist.delete).toHaveBeenCalledTimes(1);
+        expect(deleteSpy).toHaveBeenCalledWith(created.id);
+        expect(deleteSpy).toHaveBeenCalledTimes(1);
       });
     });
   });
