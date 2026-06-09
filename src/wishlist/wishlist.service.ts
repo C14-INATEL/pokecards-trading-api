@@ -40,6 +40,12 @@ export class WishlistService {
     return wishlist;
   }
 
+  async findAll(): Promise<WishlistWithItems[]> {
+    return this.prisma.wishlist.findMany({
+      include: { items: true },
+    });
+  }
+
   async update(
     id: string,
     updateWishlistDto: UpdateWishlistDto,

@@ -41,7 +41,10 @@ class InMemoryWishlistRepository {
     data: WishlistCreateData;
   }): Promise<Wishlist & { items: WishlistItem[] }> {
     const { data } = args;
-    const id = 'mock-uuid';
+    const id =
+      this.wishlists.size === 0
+        ? 'mock-uuid'
+        : `mock-uuid-${this.wishlists.size + 1}`;
     const wishlist: Wishlist & { items: WishlistItem[] } = {
       id,
       userId: data.userId,
@@ -87,6 +90,21 @@ class InMemoryWishlistRepository {
     return Promise.resolve(result ?? null);
   }
 
+  findMany(args: {
+    include?: { items: boolean };
+  }): Promise<Array<Wishlist & { items?: WishlistItem[] }>> {
+    const result = Array.from(this.wishlists.values()).map((wishlist) => {
+      const wishlistResult = { ...wishlist };
+      if (args.include?.items) {
+        wishlistResult.items = Array.from(this.items.values()).filter(
+          (item) => item.wishlistId === wishlist.id,
+        );
+      }
+      return wishlistResult;
+    });
+
+    return Promise.resolve(result);
+  }
   update(args: {
     where: { id: string };
     data: WishlistUpdateData;
@@ -153,6 +171,7 @@ describe('WishlistService', () => {
     wishlist: {
       create: jest.Mock;
       findUnique: jest.Mock;
+      findMany: jest.Mock;
       update: jest.Mock;
       delete: jest.Mock;
     };
@@ -173,6 +192,11 @@ describe('WishlistService', () => {
           .mockImplementation(
             (args: { where: { id: string }; include?: { items: boolean } }) =>
               inMemoryRepo.findUnique(args),
+          ),
+        findMany: jest
+          .fn()
+          .mockImplementation((args: { include?: { items: boolean } }) =>
+            inMemoryRepo.findMany(args),
           ),
         update: jest
           .fn()
@@ -235,7 +259,6 @@ describe('WishlistService', () => {
         const dto: CreateWishlistDto = {
           userId: 'user-456',
           name: 'Lista Vazia',
-          items: [],
         };
 
         const result = await service.create(dto);
@@ -372,6 +395,47 @@ describe('WishlistService', () => {
       });
     });
   });
+
+  describe('findAll', () => {
+    describe('fluxo normal', () => {
+      it('should return all wishlists with items', async () => {
+        await service.create({
+          userId: 'user-list-1',
+          name: 'Lista Um',
+          items: [
+            { itemType: WishlistItemType.SPECIFIC_CARD, cardId: 'card-001' },
+          ],
+        });
+        await service.create({
+          userId: 'user-list-2',
+          name: 'Lista Dois',
+          items: [],
+        });
+
+        const result = await service.findAll();
+
+        expect(result).toHaveLength(2);
+        expect(result[0].items).toHaveLength(1);
+        expect(result[1].items).toHaveLength(0);
+      });
+
+      it('should return an empty array when there are no wishlists', async () => {
+        await expect(service.findAll()).resolves.toEqual([]);
+      });
+    });
+
+    describe('fluxo de extensão', () => {
+      it('should call prisma.wishlist.findMany with items included', async () => {
+        await service.findAll();
+
+        expect(prismaServiceMock.wishlist.findMany).toHaveBeenCalledWith({
+          include: { items: true },
+        });
+        expect(prismaServiceMock.wishlist.findMany).toHaveBeenCalledTimes(1);
+      });
+    });
+  });
+
   describe('update', () => {
     describe('fluxo normal', () => {
       it('should update the name of an existing wishlist', async () => {

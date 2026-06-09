@@ -49,6 +49,16 @@ export class WishlistController {
     return this.wishlistService.create(createWishlistDto);
   }
 
+  @Get()
+  @ApiOperation({ summary: 'Listar todas as wishlists' })
+  @ApiOkResponse({
+    description: 'Lista de wishlists retornada com sucesso.',
+    type: [WishlistResponseDto],
+  })
+  findAll(): Promise<WishlistResponseDto[]> {
+    return this.wishlistService.findAll();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Buscar uma wishlist pelo identificador' })
   @ApiParam({
