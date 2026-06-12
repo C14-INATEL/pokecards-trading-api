@@ -1,7 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Trade, TradeItem } from '@prisma/client';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
+import { Trade, TradeItem, TradeStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTradeDto } from './dto/create-trade.dto';
+import { UpdateTradeDto } from './dto/update-trade.dto';
 
 export type TradeWithCards = Trade & {
   offeredCards: TradeItem[];
@@ -41,5 +46,36 @@ export class TradesService {
     }
 
     return trade;
+  }
+
+  async update(id: string, dto: UpdateTradeDto): Promise<TradeWithCards> {
+    const existing = await this.prisma.trade.findUnique({ where: { id } });
+
+    if (!existing) {
+      throw new NotFoundException(`Trade com id "${id}" não encontrado`);
+    }
+
+    if (existing.status !== TradeStatus.OPEN) {
+      throw new ConflictException(
+        `Troca com status ${existing.status} não pode ser atualizada`,
+      );
+    }
+
+    const { status, linkedWishlistId, offeredCards, requestedCards } = dto;
+
+    return this.prisma.trade.update({
+      where: { id },
+      data: {
+        ...(status !== undefined && { status }),
+        ...(linkedWishlistId !== undefined && { linkedWishlistId }),
+        ...(offeredCards !== undefined && {
+          offeredCards: { deleteMany: {}, create: offeredCards },
+        }),
+        ...(requestedCards !== undefined && {
+          requestedCards: { deleteMany: {}, create: requestedCards },
+        }),
+      },
+      include: { offeredCards: true, requestedCards: true },
+    });
   }
 }
