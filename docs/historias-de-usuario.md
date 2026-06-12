@@ -170,7 +170,7 @@ Then  o campo linkedWishlistId é persistido e retornado no objeto da trade
 |---|---|
 | Implementação | `src/trades/trades.service.ts` · `src/trades/trades.controller.ts` |
 | Teste E2E | `test/trades.e2e-spec.ts` (suite principal de integração) |
-| Teste unitário | Desenvolvido por Fábio Henrique via TDD antes da implementação |
+| Teste unitário | `src/trades/trades.service.spec.ts` → describe `"fluxo normal"` → `should create a trade` / `should find all trades` |
 | Modelo de dados | `TradeStatus` enum: `OPEN`, `CONCLUDED`, `CANCELLED` · `TradeItem` |
 
 ---
