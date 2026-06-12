@@ -169,6 +169,21 @@ class InMemoryTradeRepository {
     return Promise.resolve({ ...trade });
   }
 
+  delete(args: { where: { id: string } }): Promise<TradeWithCards> {
+    const trade = this.trades.get(args.where.id);
+    if (!trade) throw new Error('Not found');
+
+    this.trades.delete(args.where.id);
+    for (const item of trade.offeredCards) {
+      this.items.delete(item.id);
+    }
+    for (const item of trade.requestedCards) {
+      this.items.delete(item.id);
+    }
+
+    return Promise.resolve({ ...trade });
+  }
+
   clear(): void {
     this.trades.clear();
     this.items.clear();
@@ -184,6 +199,7 @@ describe('TradesService', () => {
       create: jest.Mock;
       findUnique: jest.Mock;
       update: jest.Mock;
+      delete: jest.Mock;
     };
   };
 
@@ -207,6 +223,11 @@ describe('TradesService', () => {
           .mockImplementation(
             (args: { where: { id: string }; data: UpdateTradeData }) =>
               inMemoryRepo.update(args),
+          ),
+        delete: jest
+          .fn()
+          .mockImplementation((args: { where: { id: string } }) =>
+            inMemoryRepo.delete(args),
           ),
       },
     };
@@ -600,6 +621,61 @@ describe('TradesService', () => {
           },
           include: { offeredCards: true, requestedCards: true },
         });
+      });
+    });
+  });
+
+  describe('delete', () => {
+    describe('fluxo normal', () => {
+      it('should delete an existing trade without error', async () => {
+        const created = await inMemoryRepo.create({
+          data: {
+            ownerId: 'giovanni-viridian',
+            linkedWishlistId: null,
+            offeredCards: { create: [{ cardId: 'nidoking-base', quantity: 1 }] },
+            requestedCards: {
+              create: [{ cardId: 'rhydon-base', quantity: 1 }],
+            },
+          },
+        });
+
+        await expect(service.delete(created.id)).resolves.toBeUndefined();
+        expect(prismaServiceMock.trade.delete).toHaveBeenCalledWith({
+          where: { id: created.id },
+        });
+      });
+
+      it('should make the trade unreachable after deletion', async () => {
+        const created = await inMemoryRepo.create({
+          data: {
+            ownerId: 'sabrina-saffron',
+            linkedWishlistId: null,
+            offeredCards: { create: [{ cardId: 'alakazam-base', quantity: 1 }] },
+            requestedCards: {
+              create: [{ cardId: 'mrmime-base', quantity: 1 }],
+            },
+          },
+        });
+
+        await service.delete(created.id);
+
+        await expect(service.findOne(created.id)).rejects.toThrow(
+          NotFoundException,
+        );
+      });
+    });
+
+    describe('fluxo de extensão', () => {
+      it('should throw NotFoundException when trade does not exist', async () => {
+        await expect(service.delete('id-inexistente')).rejects.toThrow(
+          NotFoundException,
+        );
+      });
+
+      it('should not call prisma.trade.delete when trade does not exist', async () => {
+        await service.delete('id-inexistente').catch(() => {});
+
+        expect(prismaServiceMock.trade.delete).not.toHaveBeenCalled();
       });
     });
   });
