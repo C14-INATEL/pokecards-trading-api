@@ -59,7 +59,7 @@ A comunicação do dia a dia foi feita de forma **contínua e assíncrona via gr
 |---|---|
 | Gestão do fluxo / comunicação | **Grupo de WhatsApp** (decisões, distribuição de tarefas e alinhamentos) |
 | Versionamento e revisão | **GitHub** (branches, Pull Requests, code review) |
-| CI/CD | **CircleCI** (lint, build e testes automatizados) |
+| CI/CD | **CircleCI** (lint, testes, build e deploy no Render) |
 | Stack de desenvolvimento | **NestJS, Prisma, PostgreSQL, Jest, Docker, TypeScript** |
 
 > O grupo optou por **não usar uma ferramenta dedicada de board** (Jira/Trello/GitHub Projects). A gestão das tarefas foi conduzida diretamente pelo Tech Lead via WhatsApp, e o **próprio quadro de Pull Requests do GitHub funcionou como board informal** do que estava "em andamento" e "concluído". Essa decisão é coerente com um time pequeno e assíncrono — registramos aqui de forma transparente, e está entre as **lições aprendidas** (ver Seção 7).
@@ -95,14 +95,14 @@ Uma tarefa só era considerada "pronta" quando:
 
 Métricas simples extraídas diretamente do histórico do repositório.
 
-> 📸 **Snapshot:** dados extraídos em **12/06/2026**, considerando o repositório até o commit de referência **`f26a46a`** (todas as branches).
+> 📸 **Snapshot:** dados extraídos em **12/06/2026** (todas as branches).
 > Como o projeto continua recebendo commits, estes números são uma **foto no tempo** e tendem apenas a **crescer**. Para conferir os valores atualizados, veja o bloco "Como reproduzir" ao final desta seção.
 
 | Métrica | Valor |
 |---|---|
 | Período do projeto | 17/03/2026 → 12/06/2026 (~12 semanas) |
-| Pull Requests mesclados | **33** (numerados até #34) |
-| Commits de trabalho (sem merges) | **~99** |
+| Pull Requests mesclados | **37** (numerados até #38) |
+| Commits de trabalho (sem merges) | **102** |
 
 ### Throughput por mês (commits de trabalho, sem merges)
 
@@ -111,16 +111,16 @@ Métricas simples extraídas diretamente do histórico do repositório.
 | Mar/2026 | 5 (setup inicial do projeto) |
 | Abr/2026 | 31 |
 | Mai/2026 | 35 |
-| Jun/2026 | 28 |
+| Jun/2026 | 31 |
 
 ### Contribuição por integrante
 
 | Integrante | Commits (trabalho) | PRs revisados / mesclados |
 |---|---|---|
-| Fábio Henrique | 31 | 10 |
-| Gabriel Baldoni | 33 | 6 |
-| Ian Marques | 22 | 9 |
-| Gabriel Renato | 11 | 8 |
+| Fábio Henrique | 32 | 10 |
+| Gabriel Baldoni | 36 | 8 |
+| Ian Marques | 22 | 11 |
+| Gabriel Renato | 12 | 8 |
 
 ### Como reproduzir as métricas
 
@@ -157,7 +157,7 @@ Toda a metodologia descrita pode ser auditada no próprio repositório:
 
 - **Fluxo de branches:** `feature/*`, `feat/*`, `fix/*`, `refactor/*`, `chore/*`, `docs/*` → integradas via PR em `dev` → `main`.
 - **Padrão de commits:** Conventional Commits (`feat`, `fix`, `test`, `refactor`, `chore`, `docs`, `ci`) — ex.: `feat(trades): add findAll endpoint using TDD method`.
-- **Pull Requests:** 34 PRs mesclados, com revisão entre membros.
+- **Pull Requests:** 37 PRs mesclados, com revisão entre membros.
 - **CI/CD:** configuração em `.circleci/config.yml`.
 - **Template de PR:** `.github/pull_request_template.md`.
 

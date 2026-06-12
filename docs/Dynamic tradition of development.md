@@ -6,11 +6,11 @@
 
 ### 1.1 Composição e Divisão da Equipe
 
-A equipe é composta por 4 a 6 integrantes, com um membro atuando como representante responsável por distribuir tarefas e alinhar prioridades. O trabalho é dividido por funcionalidades e módulos, garantindo responsabilidade clara para cada membro e desenvolvimento paralelo sem sobreposição.
+A equipe é composta por 4 integrantes, com um membro atuando como representante responsável por distribuir tarefas e alinhar prioridades. O trabalho é dividido por funcionalidades e módulos, garantindo responsabilidade clara para cada membro e desenvolvimento paralelo sem sobreposição.
 
 ### 1.2 Comunicação e Acompanhamento
 
-A comunicação combina reuniões semanais online (Meet ou Discord) para alinhamento geral e mensagens instantâneas (WhatsApp ou Telegram) para demandas do dia a dia. As atribuições são definidas pelo representante nas reuniões e anotadas individualmente por cada integrante.
+A comunicação acontece de forma contínua e assíncrona, principalmente por grupo de WhatsApp, onde decisões são tomadas, dúvidas resolvidas e tarefas redistribuídas. Os alinhamentos acontecem sob demanda (event-driven) — sempre que é preciso integrar a branch principal, distribuir um novo bloco de tarefas ou validar uma entrega —, em vez de reuniões com data fixa. As atribuições são definidas pelo representante e anotadas individualmente por cada integrante.
 
 ### 1.3 Fluxo de Desenvolvimento e Controle de Versão
 
@@ -26,7 +26,7 @@ O produto é entregue via repositório GitHub vinculado à organização da facu
 
 ### 1.6 Cronograma
 
-O projeto não segue um cronograma rígido por tarefa, mas organiza o avanço em torno dos prazos das entregas principais definidos pela instituição, com o representante garantindo o alinhamento da equipe nas reuniões semanais.
+O projeto não segue um cronograma rígido por tarefa, mas organiza o avanço em torno dos prazos das entregas principais definidos pela instituição, com o representante garantindo o alinhamento da equipe em alinhamentos feitos sob demanda.
 
 ---
 
@@ -36,7 +36,7 @@ O projeto não segue um cronograma rígido por tarefa, mas organiza o avanço em
 
 **CI/CD** — A automação dos testes a cada PR reduziu retrabalho e deu mais confiança nas entregas, impedindo que código com falhas fosse integrado ao projeto.
 
-**Reuniões semanais** — A cadência semanal foi essencial para manter o alinhamento, redistribuir tarefas e antecipar problemas antes que se tornassem bloqueios.
+**Comunicação assíncrona** — O fluxo contínuo via WhatsApp, com alinhamentos sob demanda, foi essencial para manter o time alinhado sem depender de reuniões com horário fixo, redistribuir tarefas e antecipar problemas antes que se tornassem bloqueios.
 
 ### 2.2 Dificuldades Encontradas
 
