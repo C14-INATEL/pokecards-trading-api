@@ -563,25 +563,38 @@ Conforme exigido pela disciplina, esta seção declara de forma transparente o u
 ---
 
 ### Ian Marques
-> ℹ️ Submissão focada na **evolução incremental dos testes de Wishlist** (CREATE e READ — `POST /wishlists`, `GET /wishlists/:id`), guiada pelo alinhamento no Kanban. Prompts de **escopo restrito, em etapas**, cada um rendendo commits isolados.
+**Modelo utilizado:** Claude _(versão a confirmar com o Ian)_.
 
-**Etapa 1 → 2 — adicionar nova seção de testes:**
-> "Tenho um arquivo de testes para `WishlistService` que usa `InMemoryWishlistRepository`, cobrindo o fluxo normal de create e findOne. Preciso adicionar uma nova seção com `FIXED_DATE` e duas factories (`makePrismaWishlist`, `makePrismaItem`), em dois describes separados, cobrindo chamadas corretas ao prisma, retorno sem alteração, isolamento entre métodos e propagação de erros. Não altere os testes já existentes e siga o diagrama enviado."
-> → **Satisfatório.** A estrutura veio correta; alguns casos do `findOne` precisaram de reforço num 2º prompt.
+**Para quê usei:**
+- Evolução incremental dos testes de **CREATE e READ da Wishlist** (`POST /wishlists`, `GET /wishlists/:id`), guiada pelo alinhamento no Kanban.
+- Adição e posterior **remoção de uma seção de "mock puro"**, convergindo para o padrão único `InMemoryRepository` exigido pelas convenções.
+- Correção do `findOne` para **lançar `NotFoundException`** (em vez de retornar `null`) e alinhamento de nomes/indentação dos testes ao padrão do projeto.
 
-**Etapa 2 → 3 — indentação e nomes:**
-> "Dentro do `describe('create')`, o bloco `describe('fluxo de extensão')` está com indentação incorreta. Corrija a indentação e atualize os nomes dos `it()` para inglês, alinhando com o padrão do projeto. Não altere nenhuma outra parte do arquivo."
-> → **A entrega mais limpa do ciclo** — escopo restrito, exatamente o que foi pedido.
+**Prompt 1 — adicionar seção de testes (mock puro):**
+> "Tenho um arquivo de testes para `WishlistService` que usa `InMemoryWishlistRepository`, cobrindo o fluxo normal de create e findOne. Preciso adicionar uma nova seção usando mock puro com `jest.fn()`, com uma constante `FIXED_DATE` e duas factories (`makePrismaWishlist`, `makePrismaItem`). Crie dois describes separados — `create – mock puro` e `findOne – mock puro` — cobrindo chamadas corretas ao prisma, retorno sem alteração, isolamento entre métodos e propagação de erros. Não altere os testes já existentes e siga o diagrama enviado."
+> → **Aceito com ajustes.** A estrutura veio correta; alguns casos do `findOne – mock puro` precisaram ser reforçados num 2º prompt para deixar claro o isolamento entre métodos.
 
-**Etapa 3 → 4 — remover redundância:**
-> "Os testes via `InMemoryRepository` estão redundantes com a seção de mock puro. Remova os casos que verificam campos individuais dos itens e variações de `itemType` no fluxo normal. No `findOne`, garanta que o teste de exceção verifica que o service lança `NotFoundException` quando o repositório retorna `null` (não que o retorno é `null`)."
-> → **Parcial.** A remoção saiu bem; o ajuste do `findOne` precisou de um 2º prompt focado.
+**Prompt 2 — corrigir indentação e nomes:**
+> "Dentro do `describe('create')`, o bloco `describe('fluxo de extensão')` está com indentação incorreta — solto, sem recuo em relação ao describe pai. Corrija a indentação e atualize os nomes dos `it()` para inglês, alinhando com o padrão do projeto. Não altere nenhuma outra parte do arquivo."
+> → **Aceito sem ressalvas** — a entrega mais limpa do ciclo; a IA respeitou o escopo restrito e não mexeu em nada fora do combinado.
 
-**Etapa 4 → 5 — `findOne` lança `NotFoundException`:**
-> "Em `wishlist.service.ts`: o `findOne` retorna o resultado direto do `findUnique`, que pode ser `null`. Corrija para lançar `NotFoundException` com a mensagem `Wishlist com id \"${id}\" não encontrada`, retornando `Promise<WishlistWithItems>` (sem `| null`). Em `wishlist.service.spec.ts`: renomeie o teste e troque as asserções para `rejects.toThrow(NotFoundException)`. Não altere mais nada."
-> → **Bem executada** — escopo bem delimitado, sem retrabalho.
+**Prompt 3 — remover redundância entre mock puro e InMemory:**
+> "Os testes via `InMemoryRepository` estão redundantes com a seção de mock puro. Remova os casos que verificam campos individuais dos itens e variações de `itemType` no fluxo normal. No fluxo de extensão do create, substitua os testes existentes por um de chamada correta ao prisma e um de propagação de erro. No `findOne`, garanta que o teste de exceção verifica que o service lança `NotFoundException` quando o repositório retorna `null` (não que o retorno é `null`)."
+> → **Aceito parcialmente.** A remoção dos redundantes saiu bem; o ajuste do `findOne` não veio como esperado e exigiu um 2º prompt focado só nessa parte.
 
-> 🔎 _Pendente de complementar (Ian): modelo de IA utilizado, "dinâmica de uso" e "o que NÃO foi feito por IA", para ficar no mesmo padrão dos demais._
+**Prompt 4 — `findOne` lança `NotFoundException`:**
+> "Duas correções no `findOne`. Em `wishlist.service.ts`: o método retorna o resultado direto do `findUnique`, que pode ser `null` — corrija para lançar `NotFoundException` com a mensagem `Wishlist com id \"${id}\" não encontrada`, com assinatura `Promise<WishlistWithItems>` (sem `| null`). Em `wishlist.service.spec.ts`: renomeie o teste `'deve retornar null quando prisma retorna null'` para `'deve lançar NotFoundException quando prisma retorna null'` e troque as asserções para `rejects.toThrow(NotFoundException)`. Não altere mais nada."
+> → **Aceito sem retrabalho** — escopo bem delimitado (dois arquivos, mudanças pontuais); a IA seguiu as instruções à risca.
+
+**Dinâmica de uso:** uso individual e assíncrono, com o Kanban definindo o que precisava ser feito a cada etapa. Sempre parti do arquivo de testes já existente e pedia mudanças de **escopo restrito**, uma por vez, para que cada resposta rendesse um commit isolado e revisável. Os arquivos relevantes (o `.spec.ts` e o diagrama do modelo) eram anexados ao prompt, e instruía explicitamente a IA a **não alterar nada fora do combinado**. Quando o escopo de um prompt era grande demais, o resultado vinha parcial e eu refinava com um 2º prompt focado.
+
+**O que NÃO foi feito por IA:**
+- Decisões de escopo (o que entrava em cada etapa e o que era responsabilidade minha vs. dos colegas).
+- A decisão de **remover a seção de mock puro** e convergir para o padrão único `InMemoryRepository` (interpretação do diagrama e das convenções).
+- Quais casos testar em cada fluxo (normal vs. extensão) e o comportamento esperado de isolamento entre métodos.
+- Organização de branches e commits seguindo o Conventional Commits.
+- Revisão dos PRs dos colegas.
+- Ajustes finos de indentação e de nomes identificados na revisão do código gerado.
 
 ---
 

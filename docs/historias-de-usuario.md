@@ -1,6 +1,6 @@
 # 📋 Histórias de Usuário
 
-> API REST em **NestJS · Prisma · PostgreSQL · Jest · Docker · GitHub Actions**  
+> API REST em **NestJS · Prisma · PostgreSQL · Jest · Docker · CircleCI**  
 > Repositório: [C14-INATEL/pokecards-trading-api](https://github.com/C14-INATEL/pokecards-trading-api) · Branch: `dev`
 
 ---
@@ -29,16 +29,16 @@
 
 ```gherkin
 Given que o usuário fornece userId, name e uma lista de itens (cardId ou filtro)
-When  POST /wishlist é enviada com dados válidos
+When  POST /wishlists é enviada com dados válidos
 Then  a API retorna 201 com o objeto wishlist criado,
       incluindo id (UUID), userId, name, createdAt e o array items populado
 
 Given que o usuário omite o campo name
-When  POST /wishlist é enviada
+When  POST /wishlists é enviada
 Then  a API retorna 400 Bad Request com mensagem de validação
 
 Given que o item tem itemType SPECIFIC_CARD mas cardId não é fornecido
-When  POST /wishlist é enviada
+When  POST /wishlists é enviada
 Then  a API retorna 400 Bad Request indicando campo obrigatório ausente
 ```
 
@@ -67,20 +67,20 @@ Then  a API retorna 400 Bad Request indicando campo obrigatório ausente
 
 ```gherkin
 Given que existe uma wishlist com id válido
-When  GET /wishlist/:id é enviada
+When  GET /wishlists/:id é enviada
 Then  a API retorna 200 com o objeto wishlist completo (incluindo items)
 
 Given que o id informado não corresponde a nenhuma wishlist
-When  GET /wishlist/:id é enviada
+When  GET /wishlists/:id é enviada
 Then  a API retorna 404 NotFoundException
 
 Given que existe uma wishlist com id válido e dto.items é fornecido
-When  PATCH /wishlist/:id é enviada
+When  PATCH /wishlists/:id é enviada
 Then  todos os itens anteriores são substituídos (deleteMany + create)
       e a API retorna 200 com a wishlist atualizada
 
 Given que o id informado não corresponde a nenhuma wishlist
-When  PATCH /wishlist/:id é enviada
+When  PATCH /wishlists/:id é enviada
 Then  a API retorna 404 NotFoundException
 ```
 
@@ -109,12 +109,12 @@ Then  a API retorna 404 NotFoundException
 
 ```gherkin
 Given que existe uma wishlist com id válido
-When  DELETE /wishlist/:id é enviada
+When  DELETE /wishlists/:id é enviada
 Then  a API retorna 204 No Content (void)
       e a wishlist é removida do banco de dados
 
 Given que o id informado não existe
-When  DELETE /wishlist/:id é enviada
+When  DELETE /wishlists/:id é enviada
 Then  a API retorna 404 NotFoundException
       e nenhum dado é modificado no banco
 ```
@@ -190,20 +190,20 @@ Then  o campo linkedWishlistId é persistido e retornado no objeto da trade
 ```gherkin
 Given que existe uma trade com status OPEN
   e o usuário fornece tradeId, proposerId e offeredCards válidos
-When  POST /trade-proposal é enviada
+When  POST /trade-proposals é enviada
 Then  a API retorna 201 com a proposta criada, status PENDING
       e o array offeredCards populado (include: { offeredCards: true })
 
 Given que message é omitida
-When  POST /trade-proposal é enviada
+When  POST /trade-proposals é enviada
 Then  a proposta é criada normalmente e message é null no retorno
 
 Given que a trade referenciada não existe
-When  POST /trade-proposal é enviada
+When  POST /trade-proposals é enviada
 Then  a API retorna 404 ou erro de constraint (tradeId inválido)
 
 Given que proposerId é igual ao ownerId da trade
-When  POST /trade-proposal é enviada
+When  POST /trade-proposals é enviada
 Then  a API rejeita a proposta
       [caso de borda documentado nos testes de extensão]
 ```
@@ -234,16 +234,16 @@ Then  a API rejeita a proposta
 ```gherkin
 Given que o usuário cria uma wishlist com um item de itemType FILTER
   e fornece filterType e filterRarity
-When  POST /wishlist é enviada
+When  POST /wishlists é enviada
 Then  o item é persistido com filterType e filterRarity preenchidos
       e cardId é null
 
 Given que o item é FILTER mas filterType está ausente
-When  POST /wishlist é enviada
+When  POST /wishlists é enviada
 Then  a API retorna 400 (validação de campo obrigatório para o tipo FILTER)
 
 Given que o usuário usa SPECIFIC_CARD e FILTER no mesmo array de items
-When  POST /wishlist é enviada
+When  POST /wishlists é enviada
 Then  ambos os tipos são persistidos corretamente na mesma wishlist
 ```
 
@@ -258,11 +258,11 @@ Then  ambos os tipos são persistidos corretamente na mesma wishlist
 
 ---
 
-## US-07 — Pipeline CI/CD com Notificação Automática
+## US-07 — Pipeline CI/CD no CircleCI
 
 > **Como** membro da equipe de desenvolvimento,  
-> **eu quero** que cada push nas branches `main` e `dev` execute automaticamente os testes e o build,  
-> **para que** erros sejam detectados antes do merge e o deploy no Railway ocorra somente quando tudo estiver verde.
+> **eu quero** que cada push execute automaticamente lint, testes e build no CircleCI,  
+> **para que** erros sejam detectados antes do merge e o deploy no Render ocorra somente quando tudo estiver verde.
 
 | Prioridade | Status |
 |---|---|
@@ -271,33 +271,32 @@ Then  ambos os tipos são persistidos corretamente na mesma wishlist
 ### Critérios de Aceitação
 
 ```gherkin
-Given que um push é feito nas branches main ou dev
-When  o GitHub Actions é acionado
-Then  os jobs "testes" e "build" rodam em paralelo
-      e o relatório de cobertura é salvo como artefato
+Given que um push é feito no repositório
+When  o pipeline no CircleCI é acionado
+Then  os jobs lint, test e build rodam em sequência (lint → test → build)
+      e o job test salva o relatório de cobertura como artefato
 
-Given que ambos os jobs finalizam com sucesso e o push é na branch main
-When  o pipeline avança
-Then  o job "deploy" publica automaticamente no Railway
+Given que os jobs anteriores finalizam com sucesso e o push é na branch main
+When  o pipeline avança para o job deploy
+Then  o deploy é disparado no Render via RENDER_DEPLOY_HOOK_URL
 
-Given que qualquer job falha
-When  o pipeline finaliza
-Then  o job "notificação" envia e-mail com o status de cada job,
-      independentemente do resultado
-
-Given que as secrets RAILWAY_TOKEN e SMTP_* estão configuradas
+Given que o push é em qualquer outra branch (não main)
 When  o pipeline é executado
-Then  nenhuma credencial é exposta nos logs do Actions
+Then  o job deploy não roda (filtro de branch)
+
+Given que a variável RENDER_DEPLOY_HOOK_URL não está configurada
+When  o job deploy é executado
+Then  o pipeline falha explicitamente, sem expor credenciais nos logs
 ```
 
 ### Rastreabilidade
 
 | Camada | Referência |
 |---|---|
-| CI/CD | `.github/workflows/` (4 jobs: testes, build, deploy, notificação) |
-| Script | `scripts/notify.js` |
-| Cobertura | `npm run test:cov` → relatório salvo como artefato do workflow |
-| Secrets | `RAILWAY_TOKEN`, `RAILWAY_PROJECT_ID`, `RAILWAY_SERVICE_ID`, `SMTP_*` |
+| CI/CD | `.circleci/config.yml` (4 jobs: `lint`, `test`, `build`, `deploy`) |
+| Script de notificação | `scripts/notify.js` (e-mail de status via Nodemailer) |
+| Cobertura | `npm run test -- --coverage` → relatório salvo como artefato do CircleCI |
+| Variáveis | `RENDER_DEPLOY_HOOK_URL`, `SMTP_*` (notificação) |
 
 ---
 
@@ -311,4 +310,4 @@ Then  nenhuma credencial é exposta nos logs do Actions
 | US-04 | Criar e Gerenciar Trade | `src/trades/` | `test/trades.e2e-spec.ts` | Alta | ✅ Entregue |
 | US-05 | Propor Troca | `src/trade-proposal/` | `trade-proposal.service.spec.ts` | Alta | ✅ Entregue |
 | US-06 | Filtrar Wishlist | `src/wishlist/` | `wishlist.service.spec.ts` | Média | ✅ Entregue |
-| US-07 | Pipeline CI/CD | `.github/workflows/` | GitHub Actions (cobertura) | Média | ✅ Entregue |
+| US-07 | Pipeline CI/CD | `.circleci/config.yml` | CircleCI (cobertura) | Média | ✅ Entregue |
