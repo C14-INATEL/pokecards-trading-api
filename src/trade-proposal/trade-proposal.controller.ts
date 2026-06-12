@@ -93,7 +93,6 @@ export class TradeProposalController {
   })
   @ApiConflictResponse({
     description: 'Proposta não está com status PENDING.',
-    type: NotFoundResponseDto,
   })
   update(
     @Param('id') id: string,
