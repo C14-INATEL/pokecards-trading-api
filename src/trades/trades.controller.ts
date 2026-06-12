@@ -1,8 +1,19 @@
-import { Controller, Post, Get, Patch, Body, Param } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -81,5 +92,22 @@ export class TradesController {
     @Body() updateTradeDto: UpdateTradeDto,
   ): Promise<TradeResponseDto> {
     return this.tradesService.update(id, updateTradeDto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remover uma troca' })
+  @ApiParam({
+    name: 'id',
+    description: 'Identificador da troca.',
+    schema: { type: 'string', format: 'uuid' },
+  })
+  @ApiNoContentResponse({ description: 'Troca removida.' })
+  @ApiNotFoundResponse({
+    description: 'Troca não encontrada.',
+    type: NotFoundResponseDto,
+  })
+  delete(@Param('id') id: string): Promise<void> {
+    return this.tradesService.delete(id);
   }
 }

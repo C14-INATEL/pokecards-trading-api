@@ -78,4 +78,14 @@ export class TradesService {
       include: { offeredCards: true, requestedCards: true },
     });
   }
+
+  async delete(id: string): Promise<void> {
+    const existing = await this.prisma.trade.findUnique({ where: { id } });
+
+    if (!existing) {
+      throw new NotFoundException(`Trade com id "${id}" não encontrado`);
+    }
+
+    await this.prisma.trade.delete({ where: { id } });
+  }
 }
