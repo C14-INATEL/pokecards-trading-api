@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, ConflictException } from '@nestjs/common';
 import { TradesService } from './trades.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TradeStatus } from '@prisma/client';
@@ -35,6 +35,19 @@ type CreateTradeInput = {
   linkedWishlistId?: string | null;
   offeredCards: { cardId: string; quantity: number }[];
   requestedCards: { cardId: string; quantity: number }[];
+};
+
+type UpdateTradeData = {
+  status?: TradeStatus;
+  linkedWishlistId?: string | null;
+  offeredCards?: {
+    deleteMany: object;
+    create: { cardId: string; quantity: number }[];
+  };
+  requestedCards?: {
+    deleteMany: object;
+    create: { cardId: string; quantity: number }[];
+  };
 };
 
 class InMemoryTradeRepository {
@@ -97,6 +110,65 @@ class InMemoryTradeRepository {
     return Promise.resolve(trade ? { ...trade } : null);
   }
 
+  update(args: {
+    where: { id: string };
+    data: UpdateTradeData;
+    include?: object;
+  }): Promise<TradeWithCards> {
+    const trade = this.trades.get(args.where.id);
+    if (!trade) throw new Error('Not found');
+
+    const { data } = args;
+
+    if (data.status !== undefined) {
+      trade.status = data.status;
+    }
+
+    if (data.linkedWishlistId !== undefined) {
+      trade.linkedWishlistId = data.linkedWishlistId;
+    }
+
+    if (data.offeredCards !== undefined) {
+      for (const item of trade.offeredCards) {
+        this.items.delete(item.id);
+      }
+      trade.offeredCards = [];
+      for (const card of data.offeredCards.create) {
+        const item: TradeItemData = {
+          id: `item-offered-${this.items.size + 1}`,
+          cardId: card.cardId,
+          quantity: card.quantity,
+          offeredTradeId: trade.id,
+          requestedTradeId: null,
+        };
+        this.items.set(item.id, item);
+        trade.offeredCards.push(item);
+      }
+    }
+
+    if (data.requestedCards !== undefined) {
+      for (const item of trade.requestedCards) {
+        this.items.delete(item.id);
+      }
+      trade.requestedCards = [];
+      for (const card of data.requestedCards.create) {
+        const item: TradeItemData = {
+          id: `item-requested-${this.items.size + 1}`,
+          cardId: card.cardId,
+          quantity: card.quantity,
+          offeredTradeId: null,
+          requestedTradeId: trade.id,
+        };
+        this.items.set(item.id, item);
+        trade.requestedCards.push(item);
+      }
+    }
+
+    trade.updatedAt = new Date();
+    this.trades.set(trade.id, trade);
+    return Promise.resolve({ ...trade });
+  }
+
   clear(): void {
     this.trades.clear();
     this.items.clear();
@@ -111,6 +183,7 @@ describe('TradesService', () => {
     trade: {
       create: jest.Mock;
       findUnique: jest.Mock;
+      update: jest.Mock;
     };
   };
 
@@ -128,6 +201,12 @@ describe('TradesService', () => {
           .fn()
           .mockImplementation((args: { where: { id: string } }) =>
             inMemoryRepo.findUnique(args),
+          ),
+        update: jest
+          .fn()
+          .mockImplementation(
+            (args: { where: { id: string }; data: UpdateTradeData }) =>
+              inMemoryRepo.update(args),
           ),
       },
     };
@@ -331,6 +410,196 @@ describe('TradesService', () => {
         await expect(service.findOne('id-inexistente')).rejects.toThrow(
           NotFoundException,
         );
+      });
+    });
+  });
+
+  describe('update', () => {
+    describe('fluxo normal', () => {
+      it('should update the status of an OPEN trade', async () => {
+        const created = await inMemoryRepo.create({
+          data: {
+            ownerId: 'lance-johto',
+            linkedWishlistId: null,
+            offeredCards: { create: [{ cardId: 'dragonite-base', quantity: 1 }] },
+            requestedCards: {
+              create: [{ cardId: 'gyarados-base', quantity: 1 }],
+            },
+          },
+        });
+
+        const result = await service.update(created.id, {
+          status: TradeStatus.CANCELLED,
+        });
+
+        expect(result.status).toBe(TradeStatus.CANCELLED);
+      });
+
+      it('should replace offered and requested cards when provided', async () => {
+        const created = await inMemoryRepo.create({
+          data: {
+            ownerId: 'clair-blackthorn',
+            linkedWishlistId: null,
+            offeredCards: { create: [{ cardId: 'kingdra-base', quantity: 1 }] },
+            requestedCards: {
+              create: [{ cardId: 'dragonair-base', quantity: 1 }],
+            },
+          },
+        });
+
+        const result = await service.update(created.id, {
+          offeredCards: [
+            { cardId: 'milotic-rse', quantity: 1 },
+            { cardId: 'salamence-rse', quantity: 2 },
+          ],
+          requestedCards: [{ cardId: 'flygon-rse', quantity: 1 }],
+        });
+
+        expect(result.offeredCards).toHaveLength(2);
+        expect(result.requestedCards).toHaveLength(1);
+        expect(result.offeredCards.map((c) => c.cardId)).toContain(
+          'milotic-rse',
+        );
+        expect(result.offeredCards.map((c) => c.cardId)).toContain(
+          'salamence-rse',
+        );
+        expect(result.requestedCards[0].cardId).toBe('flygon-rse');
+      });
+
+      it('should update the linkedWishlistId when provided', async () => {
+        const created = await inMemoryRepo.create({
+          data: {
+            ownerId: 'steven-hoenn',
+            linkedWishlistId: null,
+            offeredCards: { create: [{ cardId: 'metagross-rse', quantity: 1 }] },
+            requestedCards: {
+              create: [{ cardId: 'aggron-rse', quantity: 1 }],
+            },
+          },
+        });
+
+        const result = await service.update(created.id, {
+          linkedWishlistId: '8d5530de-bd66-4de9-bf68-ddf0fd49b7f2',
+        });
+
+        expect(result.linkedWishlistId).toBe(
+          '8d5530de-bd66-4de9-bf68-ddf0fd49b7f2',
+        );
+      });
+
+      it('should keep ownerId unchanged after an update', async () => {
+        const created = await inMemoryRepo.create({
+          data: {
+            ownerId: 'wallace-sootopolis',
+            linkedWishlistId: null,
+            offeredCards: { create: [{ cardId: 'milotic-rse', quantity: 1 }] },
+            requestedCards: {
+              create: [{ cardId: 'kyogre-rse', quantity: 1 }],
+            },
+          },
+        });
+
+        const result = await service.update(created.id, {
+          status: TradeStatus.CANCELLED,
+        });
+
+        expect(result.ownerId).toBe('wallace-sootopolis');
+      });
+    });
+
+    describe('fluxo de extensão', () => {
+      it('should throw NotFoundException when trade does not exist', async () => {
+        await expect(
+          service.update('id-inexistente', { status: TradeStatus.CANCELLED }),
+        ).rejects.toThrow(NotFoundException);
+      });
+
+      it('should not call prisma.trade.update when trade does not exist', async () => {
+        await service
+          .update('id-inexistente', { status: TradeStatus.CANCELLED })
+          .catch(() => {});
+
+        expect(prismaServiceMock.trade.update).not.toHaveBeenCalled();
+      });
+
+      it('should throw ConflictException when trade is not OPEN', async () => {
+        const created = await inMemoryRepo.create({
+          data: {
+            ownerId: 'cynthia-sinnoh',
+            linkedWishlistId: null,
+            offeredCards: { create: [{ cardId: 'garchomp-dp', quantity: 1 }] },
+            requestedCards: {
+              create: [{ cardId: 'lucario-dp', quantity: 1 }],
+            },
+          },
+        });
+        await inMemoryRepo.update({
+          where: { id: created.id },
+          data: { status: TradeStatus.CONCLUDED },
+        });
+
+        await expect(
+          service.update(created.id, { status: TradeStatus.CANCELLED }),
+        ).rejects.toThrow(ConflictException);
+      });
+
+      it('should not call prisma.trade.update when trade is not OPEN', async () => {
+        const created = await inMemoryRepo.create({
+          data: {
+            ownerId: 'cynthia-sinnoh',
+            linkedWishlistId: null,
+            offeredCards: { create: [{ cardId: 'spiritomb-dp', quantity: 1 }] },
+            requestedCards: {
+              create: [{ cardId: 'togekiss-dp', quantity: 1 }],
+            },
+          },
+        });
+        await inMemoryRepo.update({
+          where: { id: created.id },
+          data: { status: TradeStatus.CANCELLED },
+        });
+
+        await service
+          .update(created.id, { status: TradeStatus.OPEN })
+          .catch(() => {});
+
+        expect(prismaServiceMock.trade.update).not.toHaveBeenCalled();
+      });
+
+      it('should call prisma.trade.update with correct args when replacing cards', async () => {
+        const created = await inMemoryRepo.create({
+          data: {
+            ownerId: 'red-mtsilver',
+            linkedWishlistId: null,
+            offeredCards: { create: [{ cardId: 'pikachu-base', quantity: 1 }] },
+            requestedCards: {
+              create: [{ cardId: 'lapras-base', quantity: 1 }],
+            },
+          },
+        });
+
+        await service.update(created.id, {
+          status: TradeStatus.CANCELLED,
+          offeredCards: [{ cardId: 'snorlax-base', quantity: 1 }],
+          requestedCards: [{ cardId: 'articuno-base', quantity: 1 }],
+        });
+
+        expect(prismaServiceMock.trade.update).toHaveBeenCalledTimes(1);
+        expect(prismaServiceMock.trade.update).toHaveBeenCalledWith({
+          where: { id: created.id },
+          data: {
+            status: TradeStatus.CANCELLED,
+            offeredCards: {
+              deleteMany: {},
+              create: [{ cardId: 'snorlax-base', quantity: 1 }],
+            },
+            requestedCards: {
+              deleteMany: {},
+              create: [{ cardId: 'articuno-base', quantity: 1 }],
+            },
+          },
+          include: { offeredCards: true, requestedCards: true },
+        });
       });
     });
   });
