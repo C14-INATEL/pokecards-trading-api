@@ -110,6 +110,12 @@ class InMemoryTradeRepository {
     return Promise.resolve(trade ? { ...trade } : null);
   }
 
+  findMany(): Promise<TradeWithCards[]> {
+    return Promise.resolve(
+      Array.from(this.trades.values()).map((trade) => ({ ...trade })),
+    );
+  }
+
   update(args: {
     where: { id: string };
     data: UpdateTradeData;
@@ -198,6 +204,7 @@ describe('TradesService', () => {
     trade: {
       create: jest.Mock;
       findUnique: jest.Mock;
+      findMany: jest.Mock;
       update: jest.Mock;
       delete: jest.Mock;
     };
@@ -218,6 +225,7 @@ describe('TradesService', () => {
           .mockImplementation((args: { where: { id: string } }) =>
             inMemoryRepo.findUnique(args),
           ),
+        findMany: jest.fn().mockImplementation(() => inMemoryRepo.findMany()),
         update: jest
           .fn()
           .mockImplementation(
@@ -431,6 +439,81 @@ describe('TradesService', () => {
         await expect(service.findOne('id-inexistente')).rejects.toThrow(
           NotFoundException,
         );
+      });
+    });
+  });
+
+  describe('findAll', () => {
+    describe('fluxo normal', () => {
+      it('should return all trades', async () => {
+        await inMemoryRepo.create({
+          data: {
+            ownerId: 'janine-fuchsia',
+            linkedWishlistId: null,
+            offeredCards: { create: [{ cardId: 'weezing-base', quantity: 1 }] },
+            requestedCards: {
+              create: [{ cardId: 'arbok-base', quantity: 1 }],
+            },
+          },
+        });
+        await inMemoryRepo.create({
+          data: {
+            ownerId: 'koga-fuchsia',
+            linkedWishlistId: null,
+            offeredCards: { create: [{ cardId: 'muk-base', quantity: 1 }] },
+            requestedCards: {
+              create: [{ cardId: 'venomoth-base', quantity: 1 }],
+            },
+          },
+        });
+
+        const result = await service.findAll();
+
+        expect(result).toHaveLength(2);
+      });
+
+      it('should return trades with their offered and requested cards populated', async () => {
+        await inMemoryRepo.create({
+          data: {
+            ownerId: 'blaine-cinnabar',
+            linkedWishlistId: null,
+            offeredCards: {
+              create: [
+                { cardId: 'arcanine-base', quantity: 1 },
+                { cardId: 'magmar-base', quantity: 1 },
+              ],
+            },
+            requestedCards: {
+              create: [{ cardId: 'ninetales-base', quantity: 1 }],
+            },
+          },
+        });
+
+        const result = await service.findAll();
+
+        expect(result[0].offeredCards).toHaveLength(2);
+        expect(result[0].requestedCards).toHaveLength(1);
+        expect(result[0].offeredCards.map((c) => c.cardId)).toContain(
+          'arcanine-base',
+        );
+      });
+    });
+
+    describe('fluxo de extensão', () => {
+      it('should return an empty array when no trades exist', async () => {
+        const result = await service.findAll();
+
+        expect(result).toHaveLength(0);
+        expect(Array.isArray(result)).toBe(true);
+      });
+
+      it('should call prisma.trade.findMany with correct args', async () => {
+        await service.findAll();
+
+        expect(prismaServiceMock.trade.findMany).toHaveBeenCalledTimes(1);
+        expect(prismaServiceMock.trade.findMany).toHaveBeenCalledWith({
+          include: { offeredCards: true, requestedCards: true },
+        });
       });
     });
   });
