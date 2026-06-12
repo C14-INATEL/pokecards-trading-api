@@ -294,24 +294,32 @@ describe('TradeProposalService', () => {
   describe('findOne', () => {
     describe('fluxo normal', () => {
       it('should return a trade proposal when it exists', async () => {
-        const created = await service.create({
-          tradeId: 'trade-fo-001',
-          proposerId: 'user-fo-001',
-          offeredCards: [{ cardId: 'card-fo-001', quantity: 1 }],
+        const fakeProposal = await inMemoryRepo.create({
+          data: {
+            tradeId: 'trade-fo-001',
+            proposerId: 'user-fo-001',
+            message: null,
+            status: ProposalStatus.PENDING,
+            offeredCards: { create: [{ cardId: 'card-fo-001', quantity: 1 }] },
+          },
         });
-        const result = await service.findOne(created.id);
+        const result = await service.findOne(fakeProposal.id);
         expect(result).toBeDefined();
-        expect(result.id).toBe(created.id);
+        expect(result.id).toBe(fakeProposal.id);
         expect(result.offeredCards).toHaveLength(1);
       });
 
       it('should return proposal with correct proposerId and status', async () => {
-        const created = await service.create({
-          tradeId: 'trade-fo-002',
-          proposerId: 'user-fo-002',
-          offeredCards: [],
+        const fakeProposal = await inMemoryRepo.create({
+          data: {
+            tradeId: 'trade-fo-002',
+            proposerId: 'user-fo-002',
+            message: null,
+            status: ProposalStatus.PENDING,
+            offeredCards: { create: [] },
+          },
         });
-        const result = await service.findOne(created.id);
+        const result = await service.findOne(fakeProposal.id);
         expect(result.proposerId).toBe('user-fo-002');
         expect(result.status).toBe(ProposalStatus.PENDING);
       });
@@ -325,15 +333,19 @@ describe('TradeProposalService', () => {
       });
 
       it('should call prisma.tradeProposal.findUnique with correct args', async () => {
-        const created = await service.create({
-          tradeId: 'trade-fo-003',
-          proposerId: 'user-fo-003',
-          offeredCards: [],
+        const fakeProposal = await inMemoryRepo.create({
+          data: {
+            tradeId: 'trade-fo-003',
+            proposerId: 'user-fo-003',
+            message: null,
+            status: ProposalStatus.PENDING,
+            offeredCards: { create: [] },
+          },
         });
-        await service.findOne(created.id);
+        await service.findOne(fakeProposal.id);
         expect(prismaServiceMock.tradeProposal.findUnique).toHaveBeenCalledWith(
           {
-            where: { id: created.id },
+            where: { id: fakeProposal.id },
             include: { offeredCards: true },
           },
         );
@@ -344,30 +356,46 @@ describe('TradeProposalService', () => {
   describe('findAll', () => {
     describe('fluxo normal', () => {
       it('should return all trade proposals', async () => {
-        await service.create({
-          tradeId: 'trade-fa-001',
-          proposerId: 'user-fa-001',
-          offeredCards: [],
+        await inMemoryRepo.create({
+          data: {
+            tradeId: 'trade-fa-001',
+            proposerId: 'user-fa-001',
+            message: null,
+            status: ProposalStatus.PENDING,
+            offeredCards: { create: [] },
+          },
         });
-        await service.create({
-          tradeId: 'trade-fa-002',
-          proposerId: 'user-fa-002',
-          offeredCards: [],
+        await inMemoryRepo.create({
+          data: {
+            tradeId: 'trade-fa-002',
+            proposerId: 'user-fa-002',
+            message: null,
+            status: ProposalStatus.PENDING,
+            offeredCards: { create: [] },
+          },
         });
         const result = await service.findAll();
         expect(result).toHaveLength(2);
       });
 
       it('should return only proposals matching tradeId filter', async () => {
-        await service.create({
-          tradeId: 'trade-fa-filter',
-          proposerId: 'user-fa-003',
-          offeredCards: [],
+        await inMemoryRepo.create({
+          data: {
+            tradeId: 'trade-fa-filter',
+            proposerId: 'user-fa-003',
+            message: null,
+            status: ProposalStatus.PENDING,
+            offeredCards: { create: [] },
+          },
         });
-        await service.create({
-          tradeId: 'trade-fa-other',
-          proposerId: 'user-fa-004',
-          offeredCards: [],
+        await inMemoryRepo.create({
+          data: {
+            tradeId: 'trade-fa-other',
+            proposerId: 'user-fa-004',
+            message: null,
+            status: ProposalStatus.PENDING,
+            offeredCards: { create: [] },
+          },
         });
         const result = await service.findAll('trade-fa-filter');
         expect(result).toHaveLength(1);
@@ -395,28 +423,34 @@ describe('TradeProposalService', () => {
   describe('update', () => {
     describe('fluxo normal', () => {
       it('should accept a PENDING proposal', async () => {
-        const created = await service.create({
-          tradeId: 'trade-u-001',
-          proposerId: 'user-u-001',
-          offeredCards: [{ cardId: 'card-u-001', quantity: 1 }],
+        const fakeProposal = await inMemoryRepo.create({
+          data: {
+            tradeId: 'trade-u-001',
+            proposerId: 'user-u-001',
+            message: null,
+            status: ProposalStatus.PENDING,
+            offeredCards: { create: [{ cardId: 'card-u-001', quantity: 1 }] },
+          },
         });
-        const result = await service.update(
-          created.id,
-          ProposalStatus.ACCEPTED,
-        );
+        const result = await service.update(fakeProposal.id, {
+          status: ProposalStatus.ACCEPTED,
+        });
         expect(result.status).toBe(ProposalStatus.ACCEPTED);
       });
 
       it('should reject a PENDING proposal', async () => {
-        const created = await service.create({
-          tradeId: 'trade-u-002',
-          proposerId: 'user-u-002',
-          offeredCards: [],
+        const fakeProposal = await inMemoryRepo.create({
+          data: {
+            tradeId: 'trade-u-002',
+            proposerId: 'user-u-002',
+            message: null,
+            status: ProposalStatus.PENDING,
+            offeredCards: { create: [] },
+          },
         });
-        const result = await service.update(
-          created.id,
-          ProposalStatus.REJECTED,
-        );
+        const result = await service.update(fakeProposal.id, {
+          status: ProposalStatus.REJECTED,
+        });
         expect(result.status).toBe(ProposalStatus.REJECTED);
       });
     });
@@ -424,28 +458,30 @@ describe('TradeProposalService', () => {
     describe('fluxo de extensão', () => {
       it('should throw NotFoundException when proposal does not exist', async () => {
         await expect(
-          service.update('id-inexistente', ProposalStatus.ACCEPTED),
+          service.update('id-inexistente', { status: ProposalStatus.ACCEPTED }),
         ).rejects.toThrow(NotFoundException);
       });
 
       it('should not call prisma.tradeProposal.update when proposal does not exist', async () => {
         await service
-          .update('id-inexistente', ProposalStatus.ACCEPTED)
+          .update('id-inexistente', { status: ProposalStatus.ACCEPTED })
           .catch(() => {});
         expect(prismaServiceMock.tradeProposal.update).not.toHaveBeenCalled();
       });
 
       it('should throw ConflictException when proposal status is not PENDING', async () => {
-        const created = await service.create({
-          tradeId: 'trade-u-003',
-          proposerId: 'user-u-003',
-          offeredCards: [],
+        const fakeProposal = await inMemoryRepo.create({
+          data: {
+            tradeId: 'trade-u-003',
+            proposerId: 'user-u-003',
+            message: null,
+            status: ProposalStatus.ACCEPTED,
+            offeredCards: { create: [] },
+          },
         });
 
-        await service.update(created.id, ProposalStatus.ACCEPTED);
-
         await expect(
-          service.update(created.id, ProposalStatus.ACCEPTED),
+          service.update(fakeProposal.id, { status: ProposalStatus.ACCEPTED }),
         ).rejects.toThrow(ConflictException);
       });
     });
@@ -454,25 +490,33 @@ describe('TradeProposalService', () => {
   describe('delete', () => {
     describe('fluxo normal', () => {
       it('should delete an existing trade proposal without error', async () => {
-        const created = await service.create({
-          tradeId: 'trade-d-001',
-          proposerId: 'user-d-001',
-          offeredCards: [],
+        const fakeProposal = await inMemoryRepo.create({
+          data: {
+            tradeId: 'trade-d-001',
+            proposerId: 'user-d-001',
+            message: null,
+            status: ProposalStatus.PENDING,
+            offeredCards: { create: [] },
+          },
         });
-        await expect(service.delete(created.id)).resolves.toBeUndefined();
+        await expect(service.delete(fakeProposal.id)).resolves.toBeUndefined();
         expect(prismaServiceMock.tradeProposal.delete).toHaveBeenCalledWith({
-          where: { id: created.id },
+          where: { id: fakeProposal.id },
         });
       });
 
       it('should make proposal unreachable after deletion', async () => {
-        const created = await service.create({
-          tradeId: 'trade-d-002',
-          proposerId: 'user-d-002',
-          offeredCards: [{ cardId: 'card-d-001', quantity: 1 }],
+        const fakeProposal = await inMemoryRepo.create({
+          data: {
+            tradeId: 'trade-d-002',
+            proposerId: 'user-d-002',
+            message: null,
+            status: ProposalStatus.PENDING,
+            offeredCards: { create: [{ cardId: 'card-d-001', quantity: 1 }] },
+          },
         });
-        await service.delete(created.id);
-        await expect(service.findOne(created.id)).rejects.toThrow(
+        await service.delete(fakeProposal.id);
+        await expect(service.findOne(fakeProposal.id)).rejects.toThrow(
           NotFoundException,
         );
       });

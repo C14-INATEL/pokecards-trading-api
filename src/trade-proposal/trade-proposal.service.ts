@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTradeProposalDto } from './dto/create-trade-proposal.dto';
+import { UpdateTradeProposalDto } from './dto/update-trade-proposal.dto';
 import { ProposalStatus, TradeProposal, ProposalItem } from '@prisma/client';
 
 type TradeProposalWithItems = TradeProposal & { offeredCards: ProposalItem[] };
@@ -55,7 +56,7 @@ export class TradeProposalService {
 
   async update(
     id: string,
-    status: ProposalStatus,
+    dto: UpdateTradeProposalDto,
   ): Promise<TradeProposalWithItems> {
     const existing = await this.prisma.tradeProposal.findUnique({
       where: { id },
@@ -73,7 +74,7 @@ export class TradeProposalService {
     }
     return this.prisma.tradeProposal.update({
       where: { id },
-      data: { status },
+      data: { status: dto.status },
       include: { offeredCards: true },
     });
   }
