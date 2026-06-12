@@ -130,10 +130,10 @@ test/
 └── trades.e2e-spec.ts       # teste end-to-end
 
 .circleci/
-└── config.yml               # pipeline CI/CD (lint, test, build, deploy)
+└── config.yml               # pipeline CI/CD (5 jobs: lint, test, build, deploy, notify)
 
 scripts/
-└── notify.js                # notificação por e-mail do resultado do pipeline
+└── notify.js                # script auxiliar de notificação por e-mail (não acoplado ao pipeline)
 
 docs/                                   # documentação de Engenharia de Software (NP2)
 ├── historias-de-usuario.md             # histórias de usuário + rastreabilidade
@@ -372,7 +372,7 @@ Definidas em [`.env.example`](.env.example):
 | `DATABASE_URL` | URL de conexão usada pelo Prisma | `postgresql://...` |
 | `DIRECT_URL` | URL direta (migrations / poolers) | `postgresql://...` |
 
-No pipeline de deploy, é usada ainda a variável `RENDER_DEPLOY_HOOK_URL` (hook de deploy do Render) e, na notificação, as variáveis SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `NOTIFY_EMAIL`).
+No pipeline, o job `deploy` usa a variável `RENDER_DEPLOY_HOOK_URL` (hook de deploy do Render). As variáveis SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `NOTIFY_EMAIL`) são usadas **apenas** pelo script auxiliar `scripts/notify.js` — que **não está acoplado** ao pipeline atual (o job `notify` apenas registra o status no log).
 
 ---
 
@@ -415,23 +415,24 @@ No CI, o job `test` roda `npm run test -- --coverage` e **publica o relatório d
 
 > ⚠️ A disciplina **proíbe GitHub Actions**. O pipeline deste projeto roda no **CircleCI** ([`.circleci/config.yml`](.circleci/config.yml)).
 
-O pipeline `ci-cd` é composto por **4 jobs sequenciais**, cada um de responsabilidade (e comitado) por um integrante — atendendo ao requisito de **≥ 1 job por integrante**:
+O pipeline tem **5 jobs**, cada um de responsabilidade (e comitado) por um integrante — atendendo ao requisito de **≥ 1 job por integrante** — organizados em **dois workflows** (`ci` e `cd`):
 
-| Ordem | Job | Responsável | O que faz |
-|-------|-----|-------------|-----------|
-| 1 | `lint` | **Gabriel Renato** | `npm ci` + `npm run lint` (ESLint) |
-| 2 | `test` | **Gabriel Baldoni** | `npm ci` + testes com cobertura; salva `coverage/` como artefato |
-| 3 | `build` | **Ian** | `npm install` + `npm run build` (compila para `dist/`) |
-| 4 | `deploy` | **Fábio** | Dispara o deploy no **Render** via `RENDER_DEPLOY_HOOK_URL` |
+| Job | Responsável | O que faz |
+|-----|-------------|-----------|
+| `lint` | **Gabriel Renato** | `npm ci` + `npm run lint` (ESLint) |
+| `test` | **Gabriel Baldoni** | `npm ci` + `prisma generate` + testes com cobertura; salva `coverage/` como artefato |
+| `build` | **Ian** | `npm ci` + `prisma generate` + `npm run build` |
+| `deploy` | **Fábio** | Dispara o deploy no **Render** via `RENDER_DEPLOY_HOOK_URL` (valida resposta 2xx) |
+| `notify` | **Fábio** | Registra no log o status final do pipeline (branch, commit, autor, URL do build) |
 
 ```
-lint → test → build → deploy
-                        └── só na branch main (filtro)
+ci  (toda branch, exceto main):   lint → test → build
+cd  (apenas main):                test → build → deploy → notify
 ```
 
 - O executor é `cimg/node:22.11` (Docker).
-- O job `deploy` roda **apenas na branch `main`** e valida o HTTP de resposta do Render (`200`/`201`).
-- O script [`scripts/notify.js`](scripts/notify.js) gera um **e-mail de notificação** (via Nodemailer) com o status de cada job ao final do pipeline.
+- O workflow `cd` roda **apenas na `main`**; o `deploy` falha se `RENDER_DEPLOY_HOOK_URL` não estiver configurada ou se o Render responder fora da faixa 2xx.
+- Há ainda um script auxiliar [`scripts/notify.js`](scripts/notify.js) (e-mail via Nodemailer) no repositório; o job `notify` do pipeline atual, porém, apenas **registra o status no log**.
 
 ---
 
@@ -563,7 +564,7 @@ Conforme exigido pela disciplina, esta seção declara de forma transparente o u
 ---
 
 ### Ian Marques
-**Modelo utilizado:** Claude _(versão a confirmar com o Ian)_.
+**Modelo utilizado:** Claude Sonnet 4.6.
 
 **Para quê usei:**
 - Evolução incremental dos testes de **CREATE e READ da Wishlist** (`POST /wishlists`, `GET /wishlists/:id`), guiada pelo alinhamento no Kanban.
@@ -634,7 +635,7 @@ Conforme exigido pela disciplina, esta seção declara de forma transparente o u
 | Integrante | Foco principal | Job no CI |
 |------------|----------------|-----------|
 | **Gabriel Baldoni** | Módulo Trade Proposal, regras de aceite | `test` |
-| **Fábio Henrique** | Módulo Trades, configuração do CI/CD e deploy | `deploy` |
+| **Fábio Henrique** | Módulo Trades, configuração do CI/CD e deploy | `deploy`, `notify` |
 | **Ian Marques** | Módulo Wishlist, build | `build` |
 | **Gabriel Renato** | Wishlist (refactors/endpoints), lint | `lint` |
 

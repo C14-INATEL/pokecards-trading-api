@@ -301,7 +301,7 @@ fix(wishlist): findOne now throws NotFoundException
 test(trade-proposal): standardize describe structure
 refactor(wishlist): remove mock puro blocks
 docs: add user stories
-chore(ci): migrate pipeline to gitlab-ci
+chore(ci): migrate pipeline to circleci
 ```
 
 Evitar: `wip`, `update`, `already done`, `hotfix` solto. Se for hotfix, é `fix(<modulo>): ...`.

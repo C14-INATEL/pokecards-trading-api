@@ -6,7 +6,7 @@
 
 ### 1.1 Composição e Divisão da Equipe
 
-A equipe é composta por 4 a 6 integrantes, com um membro atuando como representante responsável por distribuir tarefas e alinhar prioridades. O trabalho é dividido por funcionalidades e módulos, garantindo responsabilidade clara para cada membro e desenvolvimento paralelo sem sobreposição.
+A equipe é composta por 4 integrantes, com um membro atuando como representante responsável por distribuir tarefas e alinhar prioridades. O trabalho é dividido por funcionalidades e módulos, garantindo responsabilidade clara para cada membro e desenvolvimento paralelo sem sobreposição.
 
 ### 1.2 Comunicação e Acompanhamento
 
