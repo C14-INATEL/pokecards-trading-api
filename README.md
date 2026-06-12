@@ -132,9 +132,6 @@ test/
 .circleci/
 └── config.yml               # pipeline CI/CD (5 jobs: lint, test, build, deploy, notify)
 
-scripts/
-└── notify.js                # script auxiliar de notificação por e-mail (não acoplado ao pipeline)
-
 docs/                                   # documentação de Engenharia de Software (NP2)
 ├── historias-de-usuario.md             # histórias de usuário + rastreabilidade
 ├── development-methodology.md          # metodologia (Kanban assíncrono)
@@ -372,7 +369,7 @@ Definidas em [`.env.example`](.env.example):
 | `DATABASE_URL` | URL de conexão usada pelo Prisma | `postgresql://...` |
 | `DIRECT_URL` | URL direta (migrations / poolers) | `postgresql://...` |
 
-No pipeline, o job `deploy` usa a variável `RENDER_DEPLOY_HOOK_URL` (hook de deploy do Render). As variáveis SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `NOTIFY_EMAIL`) são usadas **apenas** pelo script auxiliar `scripts/notify.js` — que **não está acoplado** ao pipeline atual (o job `notify` apenas registra o status no log).
+No pipeline, o job `deploy` usa a variável `RENDER_DEPLOY_HOOK_URL` (hook de deploy do Render). O job `notify` apenas registra o status final no log (não usa variáveis externas).
 
 ---
 
@@ -415,7 +412,7 @@ No CI, o job `test` roda `npm run test -- --coverage` e **publica o relatório d
 
 > ⚠️ A disciplina **proíbe GitHub Actions**. O pipeline deste projeto roda no **CircleCI** ([`.circleci/config.yml`](.circleci/config.yml)).
 
-O pipeline tem **5 jobs**, cada um de responsabilidade (e comitado) por um integrante — atendendo ao requisito de **≥ 1 job por integrante** — organizados em **dois workflows** (`ci` e `cd`):
+O pipeline tem **5 jobs** organizados em **dois workflows** (`ci` e `cd`):
 
 | Job | Responsável | O que faz |
 |-----|-------------|-----------|
@@ -432,7 +429,7 @@ cd  (apenas main):                test → build → deploy → notify
 
 - O executor é `cimg/node:22.11` (Docker).
 - O workflow `cd` roda **apenas na `main`**; o `deploy` falha se `RENDER_DEPLOY_HOOK_URL` não estiver configurada ou se o Render responder fora da faixa 2xx.
-- Há ainda um script auxiliar [`scripts/notify.js`](scripts/notify.js) (e-mail via Nodemailer) no repositório; o job `notify` do pipeline atual, porém, apenas **registra o status no log**.
+- O job `notify` apenas **registra o status final do pipeline no log** (não envia e-mail).
 
 ---
 
@@ -635,7 +632,7 @@ Conforme exigido pela disciplina, esta seção declara de forma transparente o u
 | Integrante | Foco principal | Job no CI |
 |------------|----------------|-----------|
 | **Gabriel Baldoni** | Módulo Trade Proposal, regras de aceite | `test` |
-| **Fábio Henrique** | Módulo Trades, configuração do CI/CD e deploy | `deploy`, `notify` |
+| **Fábio Henrique** | Módulo Trades, configuração do CI/CD e deploy | `deploy` |
 | **Ian Marques** | Módulo Wishlist, build | `build` |
 | **Gabriel Renato** | Wishlist (refactors/endpoints), lint | `lint` |
 

@@ -59,7 +59,7 @@ A comunicação do dia a dia foi feita de forma **contínua e assíncrona via gr
 |---|---|
 | Gestão do fluxo / comunicação | **Grupo de WhatsApp** (decisões, distribuição de tarefas e alinhamentos) |
 | Versionamento e revisão | **GitHub** (branches, Pull Requests, code review) |
-| CI/CD | **CircleCI** (lint, build e testes automatizados) |
+| CI/CD | **CircleCI** (lint, testes, build e deploy no Render) |
 | Stack de desenvolvimento | **NestJS, Prisma, PostgreSQL, Jest, Docker, TypeScript** |
 
 > O grupo optou por **não usar uma ferramenta dedicada de board** (Jira/Trello/GitHub Projects). A gestão das tarefas foi conduzida diretamente pelo Tech Lead via WhatsApp, e o **próprio quadro de Pull Requests do GitHub funcionou como board informal** do que estava "em andamento" e "concluído". Essa decisão é coerente com um time pequeno e assíncrono — registramos aqui de forma transparente, e está entre as **lições aprendidas** (ver Seção 7).

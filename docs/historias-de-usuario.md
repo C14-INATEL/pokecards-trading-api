@@ -293,7 +293,7 @@ Then  o pipeline falha explicitamente, sem expor credenciais nos logs
 | Camada | Referência |
 |---|---|
 | CI/CD | `.circleci/config.yml` (5 jobs: `lint`, `test`, `build`, `deploy`, `notify`; workflows `ci` e `cd`) |
-| Notificação | job `notify` registra o status no log do CircleCI (`scripts/notify.js` é script auxiliar de e-mail, não acoplado ao pipeline) |
+| Notificação | job `notify` registra o status final do pipeline no log do CircleCI (não envia e-mail) |
 | Cobertura | `npm run test -- --coverage` → relatório salvo como artefato do CircleCI |
 | Variáveis | `RENDER_DEPLOY_HOOK_URL` (deploy no Render) |
 
