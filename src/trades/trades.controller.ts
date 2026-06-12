@@ -46,6 +46,16 @@ export class TradesController {
     return this.tradesService.create(createTradeDto);
   }
 
+  @Get()
+  @ApiOperation({ summary: 'Listar todas as trocas' })
+  @ApiOkResponse({
+    description: 'Lista de trocas.',
+    type: [TradeResponseDto],
+  })
+  findAll(): Promise<TradeResponseDto[]> {
+    return this.tradesService.findAll();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Buscar uma troca por ID' })
   @ApiParam({

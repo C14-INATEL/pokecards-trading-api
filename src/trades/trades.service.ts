@@ -48,6 +48,12 @@ export class TradesService {
     return trade;
   }
 
+  async findAll(): Promise<TradeWithCards[]> {
+    return this.prisma.trade.findMany({
+      include: { offeredCards: true, requestedCards: true },
+    });
+  }
+
   async update(id: string, dto: UpdateTradeDto): Promise<TradeWithCards> {
     const existing = await this.prisma.trade.findUnique({ where: { id } });
 

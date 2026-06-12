@@ -525,7 +525,9 @@ describe('TradesService', () => {
           data: {
             ownerId: 'lance-johto',
             linkedWishlistId: null,
-            offeredCards: { create: [{ cardId: 'dragonite-base', quantity: 1 }] },
+            offeredCards: {
+              create: [{ cardId: 'dragonite-base', quantity: 1 }],
+            },
             requestedCards: {
               create: [{ cardId: 'gyarados-base', quantity: 1 }],
             },
@@ -575,7 +577,9 @@ describe('TradesService', () => {
           data: {
             ownerId: 'steven-hoenn',
             linkedWishlistId: null,
-            offeredCards: { create: [{ cardId: 'metagross-rse', quantity: 1 }] },
+            offeredCards: {
+              create: [{ cardId: 'metagross-rse', quantity: 1 }],
+            },
             requestedCards: {
               create: [{ cardId: 'aggron-rse', quantity: 1 }],
             },
@@ -715,7 +719,9 @@ describe('TradesService', () => {
           data: {
             ownerId: 'giovanni-viridian',
             linkedWishlistId: null,
-            offeredCards: { create: [{ cardId: 'nidoking-base', quantity: 1 }] },
+            offeredCards: {
+              create: [{ cardId: 'nidoking-base', quantity: 1 }],
+            },
             requestedCards: {
               create: [{ cardId: 'rhydon-base', quantity: 1 }],
             },
@@ -733,7 +739,9 @@ describe('TradesService', () => {
           data: {
             ownerId: 'sabrina-saffron',
             linkedWishlistId: null,
-            offeredCards: { create: [{ cardId: 'alakazam-base', quantity: 1 }] },
+            offeredCards: {
+              create: [{ cardId: 'alakazam-base', quantity: 1 }],
+            },
             requestedCards: {
               create: [{ cardId: 'mrmime-base', quantity: 1 }],
             },
