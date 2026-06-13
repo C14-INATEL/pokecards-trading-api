@@ -5,7 +5,13 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTradeProposalDto } from './dto/create-trade-proposal.dto';
-import { ProposalStatus, TradeProposal, ProposalItem } from '@prisma/client';
+import { UpdateTradeProposalDto } from './dto/update-trade-proposal.dto';
+import {
+  ProposalStatus,
+  TradeStatus,
+  TradeProposal,
+  ProposalItem,
+} from '@prisma/client';
 
 type TradeProposalWithItems = TradeProposal & { offeredCards: ProposalItem[] };
 
@@ -55,7 +61,7 @@ export class TradeProposalService {
 
   async update(
     id: string,
-    status: ProposalStatus,
+    dto: UpdateTradeProposalDto,
   ): Promise<TradeProposalWithItems> {
     const existing = await this.prisma.tradeProposal.findUnique({
       where: { id },
@@ -68,14 +74,32 @@ export class TradeProposalService {
     }
     if (existing.status !== ProposalStatus.PENDING) {
       throw new ConflictException(
-        `Cannot update proposal with status ${existing.status}`,
+        `Proposta com status ${existing.status} não pode ser atualizada`,
       );
     }
-    return this.prisma.tradeProposal.update({
+    const updated = await this.prisma.tradeProposal.update({
       where: { id },
-      data: { status },
+      data: { status: dto.status },
       include: { offeredCards: true },
     });
+
+    if (dto.status === ProposalStatus.ACCEPTED) {
+      await this.prisma.tradeProposal.updateMany({
+        where: {
+          tradeId: existing.tradeId,
+          id: { not: id },
+          status: ProposalStatus.PENDING,
+        },
+        data: { status: ProposalStatus.CANCELLED },
+      });
+
+      await this.prisma.trade.update({
+        where: { id: existing.tradeId },
+        data: { status: TradeStatus.CONCLUDED },
+      });
+    }
+
+    return updated;
   }
 
   async delete(id: string): Promise<void> {

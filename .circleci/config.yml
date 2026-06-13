@@ -6,6 +6,12 @@ version: 2.1
 #   - test   → Gabriel Baldoni
 #   - build  → Ian
 #   - deploy → Fábio
+#   - notify → Fábio
+#
+# Workflows:
+#   ci → runs lint/test/build on every branch EXCEPT main (features + dev + PRs)
+#   cd → runs test/build/deploy/notify ONLY on main (after dev→main merge)
+# With "Only build pull requests" enabled in the panel, CI runs on PRs.
 
 executors:
   node-executor:
@@ -15,7 +21,6 @@ executors:
 
 jobs:
   # lint — Gabriel Renato
-
   lint:
     executor: node-executor
     steps:
@@ -36,7 +41,6 @@ jobs:
           command: npm run lint
 
   # test — Gabriel Baldoni
-
   test:
     executor: node-executor
     steps:
@@ -52,6 +56,9 @@ jobs:
           paths:
             - node_modules
       - run:
+          name: Generate Prisma Client
+          command: npx prisma generate
+      - run:
           name: Run unit tests
           command: npm run test -- --coverage
       - store_artifacts:
@@ -59,22 +66,21 @@ jobs:
           destination: test-coverage
 
   # build — Ian
-
   build:
     executor: node-executor
     steps:
       - checkout
-
       - run:
           name: Install dependencies
-          command: npm install
-
+          command: npm ci
+      - run:
+          name: Generate Prisma Client
+          command: npx prisma generate
       - run:
           name: Build project
           command: npm run build
 
   # deploy — Fábio
-
   deploy:
     executor: node-executor
     steps:
@@ -92,20 +98,60 @@ jobs:
               -X POST "$RENDER_DEPLOY_HOOK_URL")
             echo "Render responded with HTTP $HTTP_CODE"
             cat /tmp/response.json || true
-            if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+            if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+              echo "ERROR: Render returned a non-2xx status."
               exit 1
             fi
+            echo "Deploy successfully triggered on Render."
+  notify:
+    executor: node-executor
+    steps:
+      - run:
+          name: Pipeline status notification
+          command: |
+            echo "================================================"
+            echo "✅ Pipeline da Pokecards Trading API concluída!"
+            echo "Branch:  $CIRCLE_BRANCH"
+            echo "Commit:  $CIRCLE_SHA1"
+            echo "Autor:   $CIRCLE_USERNAME"
+            echo "Build:   $CIRCLE_BUILD_URL"
+            echo "================================================"
 
 workflows:
-  ci-cd:
+  ci:
     jobs:
-      - lint
+      - lint:
+          filters:
+            branches:
+              ignore: main
       - test:
           requires: [lint]
+          filters:
+            branches:
+              ignore: main
       - build:
           requires: [test]
+          filters:
+            branches:
+              ignore: main
+  cd:
+    jobs:
+      - test:
+          filters:
+            branches:
+              only: main
+      - build:
+          requires: [test]
+          filters:
+            branches:
+              only: main
       - deploy:
           requires: [build]
           filters:
             branches:
-              only: [main]
+              only: main
+      - notify:
+          requires: [deploy]
+          filters:
+            branches:
+              only: main

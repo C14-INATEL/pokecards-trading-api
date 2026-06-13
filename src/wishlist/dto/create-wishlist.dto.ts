@@ -68,12 +68,13 @@ export class CreateWishlistDto {
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Itens desejados na wishlist.',
     type: [WishlistItemDto],
   })
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => WishlistItemDto)
-  items: WishlistItemDto[];
+  items?: WishlistItemDto[];
 }
